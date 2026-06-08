@@ -1,5 +1,6 @@
 import { createSupabaseAdminClient } from "../../../../lib/supabase/admin.js";
 import { runNpmScript, type NpmScriptResult } from "../../../../lib/ops/run-npm-script.js";
+import { runSyncTce, runSyncContasBancarias } from "../../../../lib/tce/sync-runner.js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,20 +81,47 @@ async function runEndpointOperation(
   ano: number,
   catalog: CatalogRow
 ): Promise<NpmScriptResult & { command: string }> {
-  if (action === "sync" && catalog.endpoint === "contas_bancarias_municipio") {
-    const args = ["--municipio", codigoMunicipio, "--exercicio", exercicio];
-    const result = await runNpmScript("sync:contas-bancarias", args);
+  if (action === "sync") {
+    const outputs: string[] = [];
+    const onLog = (msg: string) => outputs.push(msg);
+    let finalExitCode: number | null = 0;
+    const commands: string[] = [];
 
-    return {
-      ...result,
-      command: `npm run sync:contas-bancarias -- ${args.join(" ")}`
-    };
+    if (catalog.endpoint === "contas_bancarias_municipio") {
+      try {
+        await runSyncContasBancarias({ municipio: codigoMunicipio, exercicio, force: true }, onLog);
+        commands.push("runSyncContasBancarias");
+      } catch (err: any) {
+        outputs.push("Error: " + err.message);
+        finalExitCode = 1;
+      }
+      return { exitCode: finalExitCode, command: commands.join("\n"), output: outputs.join("\n") };
+    }
+
+    const competencias = catalog.frequencia_sugerida === "mensal" ? buildCompetencias(ano) : [undefined];
+    for (const competencia of competencias) {
+      try {
+        await runSyncTce({
+          endpoint: catalog.endpoint,
+          municipio: codigoMunicipio,
+          exercicio: exercicio,
+          dataReferencia: competencia,
+          force: true
+        }, onLog);
+        commands.push(`runSyncTce(${competencia ?? "anual"})`);
+      } catch (err: any) {
+        outputs.push("Error: " + err.message);
+        finalExitCode = 1;
+        break;
+      }
+    }
+    return { exitCode: finalExitCode, command: commands.join("\n"), output: outputs.join("\n") };
   }
 
   const competencias = catalog.frequencia_sugerida === "mensal" ? buildCompetencias(ano) : [undefined];
   const outputs: string[] = [];
   let finalExitCode: number | null = 0;
-  const script = action === "sync" ? "sync:tce" : "check:updates";
+  const script = "check:updates";
   const commands: string[] = [];
 
   for (const competencia of competencias) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarRange, CheckCircle2, RefreshCw, ServerCog, TerminalSquare } from "lucide-react";
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState } from "react";
 
 type GrupoOption = {
   slug: string;
@@ -26,10 +26,6 @@ export function OperationPanel({ municipioCodigo, municipioNome, ano, grupos }: 
   const [grupo, setGrupo] = useState("bal");
   const [runningAction, setRunningAction] = useState<"check" | "sync" | null>(null);
   const [result, setResult] = useState<OperationResult | null>(null);
-  const [outputLines, setOutputLines] = useState<string[]>([]);
-
-  const outputRef = useRef<HTMLPreElement>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
 
   const orderedGroups = useMemo(() => {
     const knownOrder = ["auxiliares", "bas", "orc", "bal"];
@@ -39,21 +35,9 @@ export function OperationPanel({ municipioCodigo, municipioNome, ano, grupos }: 
   const selectedGroup = orderedGroups.find((option) => option.slug === grupo);
   const commandPreview = `npm run ${runningAction === "sync" ? "sync:grupo" : "check:grupo"} -- --municipio ${municipioCodigo} --grupo ${grupo} --exercicio ${ano}00 --data-inicial ${ano}01 --data-final ${ano}12 --default`;
 
-  useEffect(() => {
-    // Auto-scroll para o final da saída quando houver novas linhas
-    if (outputRef.current) {
-      outputRef.current.scrollTop = outputRef.current.scrollHeight;
-    }
-  }, [outputLines]);
-
   async function runOperation(action: "check" | "sync") {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-
     setRunningAction(action);
     setResult(null);
-    setOutputLines([]);
 
     try {
       const response = await fetch("/api/operacao/grupo", {
@@ -67,77 +51,8 @@ export function OperationPanel({ municipioCodigo, municipioNome, ano, grupos }: 
         })
       });
 
-      // Lidar com o stream SSE manualmente lendo o body
-      if (!response.body) {
-        throw new Error("No response body");
-      }
-      
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      let finalCommand = commandPreview;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        
-        // Processar os eventos SSE
-        let boundary = buffer.indexOf("\n\n");
-        while (boundary !== -1) {
-          const eventStr = buffer.slice(0, boundary);
-          buffer = buffer.slice(boundary + 2);
-          
-          let eventType = "message";
-          let dataStr = "";
-
-          for (const line of eventStr.split("\n")) {
-            if (line.startsWith("event: ")) eventType = line.slice(7);
-            else if (line.startsWith("data: ")) dataStr += line.slice(6);
-          }
-
-          if (dataStr) {
-            try {
-              const data = JSON.parse(dataStr);
-              if (eventType === "start") {
-                finalCommand = data.command;
-              } else if (eventType === "line") {
-                setOutputLines((prev) => {
-                  const newLines = [...prev, data.text];
-                  // Manter apenas as últimas 500 linhas para não pesar
-                  if (newLines.length > 500) return newLines.slice(newLines.length - 500);
-                  return newLines;
-                });
-              } else if (eventType === "done") {
-                setResult({
-                  ok: data.ok,
-                  command: finalCommand,
-                  exitCode: data.exitCode,
-                  output: ""
-                });
-                setRunningAction(null);
-                return; // Fim do stream
-              } else if (eventType === "error") {
-                 setResult({
-                  ok: false,
-                  command: finalCommand,
-                  exitCode: 1,
-                  output: data.message
-                });
-                setRunningAction(null);
-                return;
-              }
-            } catch (err) {
-              console.error("Erro no parse JSON do SSE", err);
-            }
-          }
-          
-          boundary = buffer.indexOf("\n\n");
-        }
-      }
-
+      const payload = (await response.json()) as OperationResult;
+      setResult(payload);
     } catch (error) {
       setResult({
         ok: false,
@@ -145,6 +60,7 @@ export function OperationPanel({ municipioCodigo, municipioNome, ano, grupos }: 
         exitCode: 1,
         output: error instanceof Error ? error.message : "Erro desconhecido."
       });
+    } finally {
       setRunningAction(null);
     }
   }
@@ -212,21 +128,18 @@ export function OperationPanel({ municipioCodigo, municipioNome, ano, grupos }: 
         <div className="operation-progress" role="status">
           <CalendarRange size={17} />
           <span>{runningAction === "sync" ? "Sincronizando dados da API do TCE..." : "Verificando competencias disponiveis..."}</span>
-          <i className="spinner" />
+          <i />
         </div>
       ) : null}
 
-      {(running && outputLines.length > 0) || result ? (
-        <div className={result ? (result.ok ? "operation-result success" : "operation-result error") : "operation-result running"}>
+      {result ? (
+        <div className={result.ok ? "operation-result success" : "operation-result error"}>
           <div className="operation-result-header">
-            <strong>{result ? (result.ok ? "Operacao concluida" : "Operacao com erro") : "Progresso da operacao"}</strong>
-            {result && <span>exit {result.exitCode ?? "?"}</span>}
+            <strong>{result.ok ? "Operacao concluida" : "Operacao com erro"}</strong>
+            <span>exit {result.exitCode ?? "?"}</span>
           </div>
-          <span>{result ? result.command : commandPreview}</span>
-          <pre ref={outputRef} style={{ maxHeight: '300px', overflowY: 'auto' }}>
-            {outputLines.join("\n")}
-            {result?.output && "\n" + result.output}
-          </pre>
+          <span>{result.command}</span>
+          <pre>{result.output.slice(-5000)}</pre>
         </div>
       ) : null}
     </>

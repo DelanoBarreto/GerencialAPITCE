@@ -1,5 +1,6 @@
-import { getSupabaseAdmin } from "../../../../lib/supabase/admin.js";
-import { runNpmScriptStream } from "../../../../lib/ops/run-npm-script.js";
+import { createSupabaseAdminClient } from "../../../../lib/supabase/admin.js";
+import { runNpmScript } from "../../../../lib/ops/run-npm-script.js";
+import { runSyncGrupo } from "../../../../lib/tce/sync-runner.js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,72 +39,67 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: "Grupo invalido." }, { status: 400 });
   }
 
-  const supabase = getSupabaseAdmin();
-  const { data: group, error: groupError } = await supabase
-    .from("tce_endpoint_groups")
-    .select("slug")
-    .eq("slug", grupo)
-    .single();
+  const supabase = createSupabaseAdminClient();
+  const { data: group, error: groupError } = await supabase.from("tce_endpoint_groups").select("slug").eq("slug", grupo).single();
 
   if (groupError || !group) {
     return Response.json({ ok: false, error: "Grupo nao encontrado no catalogo." }, { status: 404 });
   }
 
   const exercicio = `${ano}00`;
-  const script = action === "sync" ? "sync:grupo" : "check:grupo";
+
+  if (action === "sync") {
+    const output: string[] = [];
+    const onLog = (msg: string) => output.push(msg);
+
+    try {
+      await runSyncGrupo({
+        municipio: codigoMunicipio,
+        grupo: grupo,
+        exercicio: exercicio,
+        dataInicial: `${ano}01`,
+        dataFinal: `${ano}12`,
+        onlyDefault: true,
+        force: force
+      }, onLog);
+
+      return Response.json({
+        ok: true,
+        command: `runSyncGrupo(grupo=${grupo})`,
+        exitCode: 0,
+        output: output.join("\n")
+      });
+    } catch (err: any) {
+      return Response.json({
+        ok: false,
+        command: `runSyncGrupo(grupo=${grupo})`,
+        exitCode: 1,
+        output: output.join("\n") + "\nError: " + err.message
+      });
+    }
+  }
+
+  const script = "check:grupo";
   const args = [
-    "--municipio", codigoMunicipio,
-    "--grupo", grupo,
-    "--exercicio", exercicio,
-    "--data-inicial", `${ano}01`,
-    "--data-final", `${ano}12`,
+    "--municipio",
+    codigoMunicipio,
+    "--grupo",
+    grupo,
+    "--exercicio",
+    exercicio,
+    "--data-inicial",
+    `${ano}01`,
+    "--data-final",
+    `${ano}12`,
     "--default"
   ];
 
-  if (action === "sync" && force) {
-    args.push("--force");
-  }
+  const result = await runNpmScript(script, args);
 
-  const command = `npm run ${script} -- ${args.join(" ")}`;
-
-  // Responde com Server-Sent Events (SSE)
-  // O cliente recebe cada linha em tempo real, sem esperar o processo terminar
-  const stream = new ReadableStream({
-    async start(controller) {
-      const encoder = new TextEncoder();
-
-      function send(event: string, data: string) {
-        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${data}\n\n`));
-      }
-
-      // Envia o comando que será executado
-      send("start", JSON.stringify({ command }));
-
-      try {
-        for await (const chunk of runNpmScriptStream(script, args)) {
-          if (chunk.type === "line") {
-            send("line", JSON.stringify({ text: chunk.text }));
-          } else {
-            // chunk.type === "done"
-            send("done", JSON.stringify({ ok: chunk.exitCode === 0, exitCode: chunk.exitCode, command }));
-          }
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        send("error", JSON.stringify({ message }));
-        send("done", JSON.stringify({ ok: false, exitCode: 1, command }));
-      } finally {
-        controller.close();
-      }
-    }
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no"
-    }
+  return Response.json({
+    ok: result.exitCode === 0,
+    command: `npm run ${script} -- ${args.join(" ")}`,
+    exitCode: result.exitCode,
+    output: result.output
   });
 }

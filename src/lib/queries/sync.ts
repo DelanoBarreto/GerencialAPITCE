@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from "../supabase/admin.js";
+import { createSupabaseAdminClient } from "../supabase/admin.js";
 
 export type SyncLog = {
   endpoint: string;
@@ -30,7 +30,7 @@ export async function loadSyncLogs(
   exercicio: string,
   limit = 8
 ): Promise<SyncLog[]> {
-  const supabase = getSupabaseAdmin();
+  const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("tce_sync_log")
     .select("endpoint,data_referencia_doc,rows_received,status,started_at,finished_at")
@@ -51,7 +51,7 @@ export async function loadEndpointStatus(
   codigoMunicipio: string,
   exercicio: string
 ): Promise<EndpointStatus[]> {
-  const supabase = getSupabaseAdmin();
+  const supabase = createSupabaseAdminClient();
 
   const [{ data: subscriptions, error: subErr }, { data: catalog, error: catErr }, { data: logs, error: logErr }] =
     await Promise.all([
@@ -112,7 +112,7 @@ export async function loadEndpointStatus(
 
 /** Contagem de erros registrados. */
 export async function countErrors(codigoMunicipio: string, exercicio: string): Promise<number> {
-  const supabase = getSupabaseAdmin();
+  const supabase = createSupabaseAdminClient();
   const { count, error } = await supabase
     .from("tce_sync_log")
     .select("*", { count: "exact", head: true })
@@ -126,7 +126,7 @@ export async function countErrors(codigoMunicipio: string, exercicio: string): P
 
 /** Contagem de contas bancárias. */
 export async function countContasBancarias(codigoMunicipio: string, exercicio: string): Promise<number> {
-  const supabase = getSupabaseAdmin();
+  const supabase = createSupabaseAdminClient();
   const { count, error } = await supabase
     .from("tce_contas_bancarias_municipio")
     .select("*", { count: "exact", head: true })

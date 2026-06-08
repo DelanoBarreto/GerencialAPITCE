@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { getSupabaseAdmin } from "../supabase/admin.js";
+import { createSupabaseAdminClient } from "../supabase/admin.js";
 
 export type ImportResumo = {
   slug: string;
@@ -24,7 +24,7 @@ export type ExecucaoMensal = {
 export function loadImportResumo(codigoMunicipio: string, exercicio: string) {
   return unstable_cache(
     async (): Promise<ImportResumo[]> => {
-      const supabase = getSupabaseAdmin();
+      const supabase = createSupabaseAdminClient();
       const { data, error } = await supabase.rpc("get_import_summary", {
         p_municipio: codigoMunicipio,
         p_exercicio: exercicio
@@ -60,7 +60,7 @@ export function loadImportResumo(codigoMunicipio: string, exercicio: string) {
 export function loadExecucaoMensal(codigoMunicipio: string, exercicio: string) {
   return unstable_cache(
     async (): Promise<ExecucaoMensal[]> => {
-      const supabase = getSupabaseAdmin();
+      const supabase = createSupabaseAdminClient();
       const { data, error } = await supabase
         .from("vw_tce_execucao_orcamentaria_mensal")
         .select(

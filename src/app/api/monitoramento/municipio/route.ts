@@ -1,4 +1,5 @@
 import { createSupabaseAdminClient } from "../../../../lib/supabase/admin.js";
+import { TceClient } from "../../../../lib/tce/client.js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,7 +33,32 @@ export async function POST(request: Request) {
     .single();
 
   if (municipioError || !municipio) {
-    return Response.json({ ok: false, message: "Municipio ainda nao existe na tabela de municipios." }, { status: 404 });
+    let foundMunicipio = false;
+    try {
+      const tce = new TceClient();
+      for await (const page of tce.paginate("municipios", { codigo_municipio: codigoMunicipio })) {
+        if (page.rows.length > 0) {
+          const row = page.rows[0];
+          const { error: upsertError } = await supabase.from("municipios").upsert({
+            codigo_municipio: String(row.codigo_municipio),
+            nome_municipio: String(row.nome_municipio ?? row.descricao_municipio ?? row.nome),
+            payload: row,
+            updated_at: now
+          }, { onConflict: "codigo_municipio" });
+          
+          if (!upsertError) {
+            foundMunicipio = true;
+          }
+          break;
+        }
+      }
+    } catch (err: any) {
+      return Response.json({ ok: false, message: "Erro ao buscar municipio no TCE: " + err.message }, { status: 500 });
+    }
+
+    if (!foundMunicipio) {
+      return Response.json({ ok: false, message: "Municipio nao encontrado localmente nem no TCE." }, { status: 404 });
+    }
   }
 
   const { error: monitorError } = await supabase.from("tce_municipios_monitorados").upsert(

@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { getSupabaseAdmin } from "../supabase/admin.js";
+import { createSupabaseAdminClient } from "../supabase/admin.js";
 
 export type Municipio = {
   codigo_municipio: string;
@@ -21,7 +21,7 @@ export type Monitorado = {
  */
 export const loadMunicipios = unstable_cache(
   async (): Promise<Municipio[]> => {
-    const supabase = getSupabaseAdmin();
+    const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
       .from("municipios")
       .select("codigo_municipio,nome_municipio")
@@ -40,7 +40,7 @@ export const loadMunicipios = unstable_cache(
  */
 export const loadMonitorados = unstable_cache(
   async (): Promise<Monitorado[]> => {
-    const supabase = getSupabaseAdmin();
+    const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
       .from("tce_municipio_exercicios_monitorados")
       .select("codigo_municipio,ano,exercicio_orcamento,ativo,sincronizacao_automatica")
@@ -69,7 +69,7 @@ export const loadMonitorados = unstable_cache(
  */
 export const loadGrupos = unstable_cache(
   async (slugs: string[] = ["auxiliares", "bas", "orc", "bal"]) => {
-    const supabase = getSupabaseAdmin();
+    const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase
       .from("tce_endpoint_groups")
       .select("slug,nome,ordem")
