@@ -1,0 +1,38 @@
+{
+  "name": "apitce",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "sync:tce": "tsx scripts/sync-tce.ts",
+    "sync:tce:dry": "tsx scripts/sync-tce.ts --dry-run",
+    "check:updates": "tsx scripts/check-updates.ts",
+    "sync:monitorados": "tsx scripts/sync-monitorados.ts",
+    "import:catalog": "tsx scripts/import-openapi-catalog.ts",
+    "monitor:municipio": "tsx scripts/monitor-municipio.ts",
+    "check:grupo": "tsx scripts/check-grupo.ts",
+    "sync:grupo": "tsx scripts/sync-grupo.ts",
+    "check:ano": "tsx scripts/check-ano.ts",
+    "sync:ano": "tsx scripts/sync-ano.ts",
+    "sync:contas-bancarias": "tsx scripts/sync-contas-bancarias.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^17.4.2",
+    "lucide-react": "^1.17.0",
+    "next": "^16.2.7",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "playwright": "^1.60.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}
