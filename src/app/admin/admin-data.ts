@@ -1,4 +1,4 @@
-import { createSupabaseAdminClient } from "../../lib/supabase/admin.js";
+import { createSupabaseAdminClient, hasSupabaseConfig } from "../../lib/supabase/admin.js";
 
 export type AdminMunicipio = {
   codigo_municipio: string;
@@ -159,6 +159,34 @@ const fallbackGroups: AdminGroup[] = [
 ];
 
 export async function loadAdminData(): Promise<AdminData> {
+  if (!hasSupabaseConfig()) {
+    const monitorados = [{ codigo_municipio: "014", nome_municipio: "ARACATI", ano: 2025, exercicio_orcamento: "202500", ativo: true, sincronizacao_automatica: true }];
+    const clients = fallbackClients;
+    const logs: AdminSyncLog[] = [];
+    const grupos = fallbackGroups;
+    const municipios = fallbackMunicipios;
+    const scopeRows = buildScopeRows(monitorados, logs, clients);
+
+    return {
+      monitorados,
+      municipios,
+      logs,
+      grupos,
+      catalog: [],
+      subscriptions: [],
+      clients,
+      scopeRows,
+      kpis: {
+        municipiosAtivos: monitorados.length,
+        clientesAtivos: clients.filter((client) => client.liberacao !== "suspenso").length,
+        syncs24h: 0,
+        falhas: 0,
+        alertas: 0,
+        registros24h: 0
+      }
+    };
+  }
+
   const supabase = createSupabaseAdminClient();
   const [municipiosResult, monitoradosResult, logsResult, gruposResult, catalogResult, subscriptionsResult] = await Promise.all([
     supabase.from("municipios").select("codigo_municipio,nome_municipio").order("nome_municipio", { ascending: true }),

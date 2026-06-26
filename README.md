@@ -57,6 +57,18 @@ Instalar dependencias:
 npm install
 ```
 
+Subir a aplicacao no Windows:
+
+```powershell
+.\scripts\dev.ps1
+```
+
+Ou, se preferir `cmd`:
+
+```bat
+scripts\dev.cmd
+```
+
 Validar TypeScript:
 
 ```bash

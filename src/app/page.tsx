@@ -13,7 +13,7 @@ import type { ReactNode } from "react";
 import { EndpointTable } from "./EndpointTable.js";
 import { MonitorPanel } from "./MonitorPanel.js";
 import { OperationPanel } from "./OperationPanel.js";
-import { createSupabaseAdminClient } from "../lib/supabase/admin.js";
+import { createSupabaseAdminClient, hasSupabaseConfig } from "../lib/supabase/admin.js";
 import {
   loadSyncLogs,
   loadEndpointStatus,
@@ -70,17 +70,51 @@ const grupoResumo: Record<string, { status: string; detalhe: string }> = {
   bal: { status: "Atualizado", detalhe: "12 competencias carregadas" }
 };
 
+const fallbackMunicipios: Municipio[] = [
+  { codigo_municipio: "014", nome_municipio: "ARACATI" },
+  { codigo_municipio: "120", nome_municipio: "QUIXADA" },
+  { codigo_municipio: "024", nome_municipio: "CRATO" },
+  { codigo_municipio: "158", nome_municipio: "SOBRAL" },
+  { codigo_municipio: "061", nome_municipio: "IGUATU" }
+];
+
+const fallbackMonitorados: Monitorado[] = [
+  { codigo_municipio: "014", nome_municipio: "ARACATI", ano: 2025, exercicio_orcamento: "202500", ativo: true, sincronizacao_automatica: true }
+];
+
+const fallbackGrupos: GrupoApi[] = [
+  { slug: "auxiliares", nome: "Auxiliares", ordem: 1 },
+  { slug: "bas", nome: "BAS", ordem: 2 },
+  { slug: "orc", nome: "ORC", ordem: 3 },
+  { slug: "bal", nome: "BAL", ordem: 4 }
+];
+
+const fallbackExecucaoMensal: ExecucaoMensal[] = [
+  { data_referencia_doc: "202501", receita_arrecadada_no_mes: 0, despesa_empenhada_no_mes: 0, despesa_liquidada_no_mes: 0, despesa_paga_no_mes: 0 }
+];
+
+const fallbackLogs: SyncLog[] = [];
+
+const fallbackImportResumo: ImportResumo[] = [
+  { slug: "auxiliares", nome: "Auxiliares", registros: 0, tabelas: 3, detalhe: "Sem Supabase configurado" },
+  { slug: "bas", nome: "BAS", registros: 0, tabelas: 5, detalhe: "Sem Supabase configurado" },
+  { slug: "orc", nome: "ORC", registros: 0, tabelas: 6, detalhe: "Sem Supabase configurado" },
+  { slug: "bal", nome: "BAL", registros: 0, tabelas: 4, detalhe: "Sem Supabase configurado" }
+];
+
+const fallbackEndpointStatus: EndpointStatus[] = [];
+
 type HomePageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = (await searchParams) ?? {};
-  const supabase = createSupabaseAdminClient();
   const requestedMunicipio = firstParam(params.municipio);
   const requestedAno = Number(firstParam(params.ano));
 
-  const [monitorados, municipiosDisponiveis] = await Promise.all([loadMonitorados(), loadMunicipiosDisponiveis()]);
+  const canUseSupabase = hasSupabaseConfig();
+  const [monitorados, municipiosDisponiveis] = await Promise.all([loadMonitorados(canUseSupabase), loadMunicipiosDisponiveis(canUseSupabase)]);
   const selectedMonitorado =
     monitorados.find(
       (item) =>
@@ -96,55 +130,23 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       sincronizacao_automatica: true
     };
 
-  const [
-    municipioResult,
-    exerciciosResult,
-    gruposResult,
-    execucaoResult,
-    logsResult,
-    contasCount,
-    pendenciasCount
-  ] = await Promise.all([
-    supabase
-      .from("municipios")
-      .select("codigo_municipio,nome_municipio")
-      .eq("codigo_municipio", selectedMonitorado.codigo_municipio)
-      .single(),
-    supabase
-      .from("tce_municipio_exercicios_monitorados")
-      .select("ano,exercicio_orcamento,ativo")
-      .eq("codigo_municipio", selectedMonitorado.codigo_municipio)
-      .order("ano", { ascending: false }),
-    supabase
-      .from("tce_endpoint_groups")
-      .select("slug,nome,ordem")
-      .in("slug", ["auxiliares", "bas", "orc", "bal"])
-      .order("ordem", { ascending: true }),
-    supabase
-      .from("vw_tce_execucao_orcamentaria_mensal")
-      .select(
-        "data_referencia_doc,receita_arrecadada_no_mes,despesa_empenhada_no_mes,despesa_liquidada_no_mes,despesa_paga_no_mes"
-      )
-      .eq("codigo_municipio", selectedMonitorado.codigo_municipio)
-      .eq("exercicio_orcamento", selectedMonitorado.exercicio_orcamento)
-      .order("data_referencia_doc", { ascending: true }),
-    loadSyncLogs(selectedMonitorado.codigo_municipio, selectedMonitorado.exercicio_orcamento),
-    countContasBancarias(selectedMonitorado.codigo_municipio, selectedMonitorado.exercicio_orcamento),
-    countErrors(selectedMonitorado.codigo_municipio, selectedMonitorado.exercicio_orcamento)
-  ]);
-
-  const municipio = municipioResult.data as Municipio | null;
-  const grupos = (gruposResult.data ?? []) as GrupoApi[];
-  const execucao = aggregateExecucaoMensal((execucaoResult.data ?? []) as ExecucaoMensal[]);
-  const logs = logsResult;
-  const anoAtivo = selectedMonitorado.ano ?? exerciciosResult.data?.[0]?.ano ?? 2025;
-  const exercicio = selectedMonitorado.exercicio_orcamento ?? exerciciosResult.data?.[0]?.exercicio_orcamento ?? "202500";
-  const importResumo = await loadImportResumo(municipio?.codigo_municipio ?? selectedMonitorado.codigo_municipio, exercicio);
-  const endpointStatus = await loadEndpointStatus(selectedMonitorado.codigo_municipio, exercicio);
+  const municipio = canUseSupabase ? await loadMunicipioByCodigo(selectedMonitorado.codigo_municipio) : null;
+  const exercicios = canUseSupabase ? await loadExerciciosMonitorados(selectedMonitorado.codigo_municipio) : [];
+  const grupos = canUseSupabase ? await loadGrupos() : fallbackGrupos;
+  const execucao = canUseSupabase ? await loadExecucao(selectedMonitorado.codigo_municipio, selectedMonitorado.exercicio_orcamento) : fallbackExecucaoMensal;
+  const logs = canUseSupabase ? await loadSyncLogs(selectedMonitorado.codigo_municipio, selectedMonitorado.exercicio_orcamento) : fallbackLogs;
+  const anoAtivo = selectedMonitorado.ano ?? exercicios[0]?.ano ?? 2025;
+  const exercicio = selectedMonitorado.exercicio_orcamento ?? exercicios[0]?.exercicio_orcamento ?? "202500";
+  const importResumo = canUseSupabase
+    ? await loadImportResumo(municipio?.codigo_municipio ?? selectedMonitorado.codigo_municipio, exercicio)
+    : fallbackImportResumo;
+  const endpointStatus = canUseSupabase ? await loadEndpointStatus(selectedMonitorado.codigo_municipio, exercicio) : fallbackEndpointStatus;
   const totais = buildTotals(execucao);
   const ultimoMes = execucao.at(-1);
   const totalImportado = importResumo.reduce((sum, item) => sum + item.registros, 0);
   const totalTabelas = importResumo.reduce((sum, item) => sum + item.tabelas, 0);
+  const contasCount = canUseSupabase ? await countContasBancarias(selectedMonitorado.codigo_municipio, selectedMonitorado.exercicio_orcamento) : 0;
+  const pendenciasCount = canUseSupabase ? await countErrors(selectedMonitorado.codigo_municipio, selectedMonitorado.exercicio_orcamento) : 0;
 
   return (
     <main className="app-shell">
@@ -361,7 +363,11 @@ function MetricCard({
   );
 }
 
-async function loadMonitorados(): Promise<Monitorado[]> {
+async function loadMonitorados(canUseSupabase: boolean): Promise<Monitorado[]> {
+  if (!canUseSupabase) {
+    return fallbackMonitorados;
+  }
+
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("tce_municipio_exercicios_monitorados")
@@ -375,7 +381,7 @@ async function loadMonitorados(): Promise<Monitorado[]> {
   }
 
   const rows = (data ?? []) as Array<Omit<Monitorado, "nome_municipio">>;
-  const municipios = await loadMunicipiosDisponiveis();
+  const municipios = await loadMunicipiosDisponiveis(true);
   const nameByCode = new Map(municipios.map((item) => [item.codigo_municipio, item.nome_municipio]));
 
   return rows.map((row) => ({
@@ -384,7 +390,11 @@ async function loadMonitorados(): Promise<Monitorado[]> {
   }));
 }
 
-async function loadMunicipiosDisponiveis(): Promise<Municipio[]> {
+async function loadMunicipiosDisponiveis(canUseSupabase: boolean): Promise<Municipio[]> {
+  if (!canUseSupabase) {
+    return fallbackMunicipios;
+  }
+
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("municipios")
@@ -396,6 +406,63 @@ async function loadMunicipiosDisponiveis(): Promise<Municipio[]> {
   }
 
   return (data ?? []) as Municipio[];
+}
+
+async function loadMunicipioByCodigo(codigoMunicipio: string): Promise<Municipio | null> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase.from("municipios").select("codigo_municipio,nome_municipio").eq("codigo_municipio", codigoMunicipio).single();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as Municipio | null) ?? null;
+}
+
+async function loadExerciciosMonitorados(codigoMunicipio: string) {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("tce_municipio_exercicios_monitorados")
+    .select("ano,exercicio_orcamento,ativo")
+    .eq("codigo_municipio", codigoMunicipio)
+    .order("ano", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as Array<{ ano: number; exercicio_orcamento: string; ativo: boolean }>;
+}
+
+async function loadGrupos() {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("tce_endpoint_groups")
+    .select("slug,nome,ordem")
+    .in("slug", ["auxiliares", "bas", "orc", "bal"])
+    .order("ordem", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as GrupoApi[];
+}
+
+async function loadExecucao(codigoMunicipio: string, exercicio: string): Promise<ExecucaoMensal[]> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("vw_tce_execucao_orcamentaria_mensal")
+    .select("data_referencia_doc,receita_arrecadada_no_mes,despesa_empenhada_no_mes,despesa_liquidada_no_mes,despesa_paga_no_mes")
+    .eq("codigo_municipio", codigoMunicipio)
+    .eq("exercicio_orcamento", exercicio)
+    .order("data_referencia_doc", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return aggregateExecucaoMensal((data ?? []) as ExecucaoMensal[]);
 }
 
 async function loadImportResumo(codigoMunicipio: string, exercicio: string): Promise<ImportResumo[]> {

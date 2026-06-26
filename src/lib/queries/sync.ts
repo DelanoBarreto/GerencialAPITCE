@@ -1,4 +1,4 @@
-import { createSupabaseAdminClient } from "../supabase/admin.js";
+import { createSupabaseAdminClient, hasSupabaseConfig } from "../supabase/admin.js";
 
 export type SyncLog = {
   endpoint: string;
@@ -30,6 +30,10 @@ export async function loadSyncLogs(
   exercicio: string,
   limit = 8
 ): Promise<SyncLog[]> {
+  if (!hasSupabaseConfig()) {
+    return [];
+  }
+
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("tce_sync_log")
@@ -51,6 +55,10 @@ export async function loadEndpointStatus(
   codigoMunicipio: string,
   exercicio: string
 ): Promise<EndpointStatus[]> {
+  if (!hasSupabaseConfig()) {
+    return [];
+  }
+
   const supabase = createSupabaseAdminClient();
 
   const [{ data: subscriptions, error: subErr }, { data: catalog, error: catErr }, { data: logs, error: logErr }] =
@@ -112,6 +120,10 @@ export async function loadEndpointStatus(
 
 /** Contagem de erros registrados. */
 export async function countErrors(codigoMunicipio: string, exercicio: string): Promise<number> {
+  if (!hasSupabaseConfig()) {
+    return 0;
+  }
+
   const supabase = createSupabaseAdminClient();
   const { count, error } = await supabase
     .from("tce_sync_log")
@@ -126,6 +138,10 @@ export async function countErrors(codigoMunicipio: string, exercicio: string): P
 
 /** Contagem de contas bancárias. */
 export async function countContasBancarias(codigoMunicipio: string, exercicio: string): Promise<number> {
+  if (!hasSupabaseConfig()) {
+    return 0;
+  }
+
   const supabase = createSupabaseAdminClient();
   const { count, error } = await supabase
     .from("tce_contas_bancarias_municipio")
