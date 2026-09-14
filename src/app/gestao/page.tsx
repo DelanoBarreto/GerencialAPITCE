@@ -25,7 +25,10 @@ export default async function GestaoPage() {
   const periodoLabel = formatPeriodoInfo(snapshot.periodo);
   const competencia = formatCompetencia(current.competencia);
   const saldo = acumulado.receita - acumulado.pago;
-  const hasAttention = acumulado.empenhado > acumulado.receita;
+  // Empenhar mais que a receita arrecadada e normal no setor publico: o orcamento
+  // inteiro costuma ser empenhado no inicio do exercicio. O que exige atencao e o
+  // pagamento superar a arrecadacao, porque ai falta caixa.
+  const hasAttention = acumulado.pago > acumulado.receita;
 
   const nav: ShellNavItem[] = [
     { href: "/gestao", label: "Visão geral", icon: <House size={17} />, active: true },
@@ -64,7 +67,7 @@ export default async function GestaoPage() {
         <PilotMetric
           label="Despesa empenhada"
           value={formatCurrency(acumulado.empenhado)}
-          detail="compromissos assumidos no período"
+          detail="orçamento comprometido, ainda não pago"
           tone="amber"
         />
         <PilotMetric
@@ -118,8 +121,8 @@ export default async function GestaoPage() {
             <span>
               <strong>{hasAttention ? "Atenção necessária." : "Situação acompanhada."}</strong>{" "}
               {hasAttention
-                ? "A despesa empenhada acumulada ultrapassa a receita arrecadada no período."
-                : "A execução acumulada está coerente com a receita arrecadada no período."}
+                ? "Os pagamentos do período superam a receita arrecadada, o que pressiona o caixa."
+                : "Os pagamentos do período estão dentro da receita arrecadada."}
             </span>
           </PilotNotice>
         </PilotSection>
