@@ -7,6 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "typecheck": "tsc --noEmit",
+    "test": "tsx scripts/test-periodo.ts",
     "sync:tce": "tsx scripts/sync-tce.ts",
     "sync:tce:dry": "tsx scripts/sync-tce.ts --dry-run",
     "check:updates": "tsx scripts/check-updates.ts",
@@ -20,18 +21,23 @@
     "sync:contas-bancarias": "tsx scripts/sync-contas-bancarias.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.0",
+    "@supabase/supabase-js": "^2.116.0",
     "dotenv": "^17.4.2",
-    "lucide-react": "^1.17.0",
-    "next": "^16.2.7",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "lucide-react": "^1.45.0",
+    "next": "^16.3.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22.0.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "playwright": "^1.60.0",
+    "postcss": "^8.5.6",
+    "shadcn": "^4.21.0",
+    "tailwindcss": "^4.3.3",
     "tsx": "^4.19.0",
     "typescript": "^5.5.0"
   }
