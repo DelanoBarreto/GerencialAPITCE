@@ -33,18 +33,20 @@ Usuário rejeitou as 3 telas ("pobre, confuso, feio"). Pediu dashboard com sideb
 3. `src/lib/queries/pilot.ts` — `PilotSnapshot` agora expõe `periodo: PeriodoInfo`.
 4. `src/app/styles.css` **reescrito do zero**: 4.498 → ~1.660 linhas, elimina 5 camadas de override e 2 paletas concorrentes que existiam antes. Todas as classes usadas pelas sub-rotas do admin foram preservadas por nome (conferido).
 
-**Em andamento (task 5, não commitada ainda):**
-- `src/components/shell/DashboardShell.tsx` — criado (sidebar + header reutilizável).
-- `src/app/admin/AdminShell.tsx` — reescrito sobre o `DashboardShell`, navegação duplicada (topbar+sidebar+workflow) virou só sidebar.
-- `src/app/admin/page.tsx` — reescrito em 2 seções: "Precisa de atenção" (pendências/falhas) e "Cobertura" (KPIs + tabela).
-- `npm run typecheck` passa limpo neste ponto.
+**Feito (tasks 5, 6 e 7 do plano — commitadas em 2026-09-14):**
+- Task 5: `src/components/shell/DashboardShell.tsx` criado (sidebar + header reutilizável). `AdminShell.tsx` reescrito sobre ele, navegação triplicada (topbar+sidebar+workflow) virou só sidebar. `admin/page.tsx` reescrito em 2 seções: "Precisa de atenção" (pendências/falhas) e "Cobertura" (KPIs + tabela).
+- Task 6: `PilotSourceBand` mudou assinatura — agora recebe `periodo: PeriodoInfo` inteiro em vez de `competencia/inicio/fim` soltos, e mostra aviso quando há lacuna. `ExecutiveTrend` ganhou pontos (`circle`) em cada competência com `<title>` acessível, e trata série vazia com `PilotEmpty`. Removidos `PilotDetailLink` e `PilotIcons` (vestigiais, sem uso).
+- Task 7: `/gestao` reescrita como dashboard real usando `DashboardShell` — saiu do formato maquete de celular (520px) e da barra de progresso com divisor hardcoded de 160.000.000. Agora mostra os 4 indicadores acumulados do período + tabela mês a mês. `/apresentacao/aracati` atualizada para a nova assinatura de `PilotSourceBand` e `formatPeriodoInfo`, mantendo o formato comercial com sidebar própria.
 
-**Falta fazer (tasks 6–8 do plano):**
-- Task 6: `PilotSourceBand` mudar assinatura para receber `periodo` inteiro (hoje ainda recebe `competencia/inicio/fim` separados) + pontos no gráfico `ExecutiveTrend`.
-- Task 7: reescrever `/gestao` (sair do formato maquete de celular 520px) e `/apresentacao/aracati` para usar a nova `PilotSourceBand` e `DashboardShell`.
-- Task 8: rodar `npm run dev`, tirar screenshots (desktop 1440px + mobile 390px) das 3 telas, criticar e ajustar `styles.css`, então mostrar ao usuário.
+**Verificado antes de parar (2026-09-14):** `npm test` (6/6 passam), `npm run typecheck` (limpo) e `npm run build` (compila todas as rotas) — todos rodados com sucesso no estado atual.
 
-**Atenção ao retomar:** como o Admin foi commitado mas Gestão/Apresentação ainda não foram atualizadas, `npm run build` pode falhar até a Task 6 terminar (assinatura de `PilotSourceBand` mudando). Seguir o plano na ordem exata das tasks 6→7→8.
+**Falta fazer (task 8 do plano, a última):**
+- Rodar `npm run dev`, instalar o browser do Playwright (`npx playwright install chromium`) e capturar screenshots de `/admin`, `/gestao`, `/apresentacao/aracati` em desktop (1440px) e mobile (390px) — o script `scripts/screenshot.ts` ainda precisa ser criado conforme o plano (Task 8, Step 1).
+- Criticar o resultado visualmente e ajustar `src/app/styles.css` diretamente (nunca empilhar uma nova camada por cima — foi isso que degradou o arquivo antes).
+- Repetir até ficar apresentável, então mostrar as capturas ao usuário com um resumo do que mudou.
+- Detalhe a conferir: a classe `.admin-gestao-grid` foi adicionada ao CSS para a tabela mensal de `/gestao` — vale checar visualmente se o alinhamento numérico (`tabular-nums`) está bom nessa tabela.
+
+**Este é o único passo restante do plano.** Depois da Task 8, o redesign está completo.
 
 ## Cuidados
 

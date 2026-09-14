@@ -1,15 +1,13 @@
 import { ArrowRight, BarChart3, Building2, CalendarRange, CircleCheckBig, Gauge, Landmark, Smartphone } from "lucide-react";
 import { ExecutiveTrend } from "../../../components/pilot/ExecutiveTrend.js";
 import { PilotMetric, PilotNotice, PilotSection, PilotSourceBand } from "../../../components/pilot/PilotUi.js";
-import { formatCompetencia, formatCurrency, formatCurrencyCompact, formatPeriodoCompetencias } from "../../../lib/formatters.js";
+import { formatCurrency, formatCurrencyCompact, formatPeriodoInfo } from "../../../lib/formatters.js";
 import { loadAracatiPilot } from "../../../lib/queries/pilot.js";
 
 export const dynamic = "force-dynamic";
 
 export default async function ApresentacaoAracatiPage() {
   const snapshot = await loadAracatiPilot();
-  const first = snapshot.meses.at(0);
-  const last = snapshot.meses.at(-1);
   const totals = snapshot.meses.reduce(
     (acc, month) => ({
       receita: acc.receita + month.receita,
@@ -19,10 +17,7 @@ export default async function ApresentacaoAracatiPage() {
     }),
     { receita: 0, empenhado: 0, liquidado: 0, pago: 0 }
   );
-  const competencia = last ? formatCompetencia(last.competencia) : "sem competência";
-  const inicio = first ? formatCompetencia(first.competencia) : undefined;
-  const fim = last ? formatCompetencia(last.competencia) : undefined;
-  const periodo = formatPeriodoCompetencias(first?.competencia, last?.competencia);
+  const periodo = formatPeriodoInfo(snapshot.periodo);
   const saldo = totals.receita - totals.pago;
 
   return (
@@ -67,7 +62,7 @@ export default async function ApresentacaoAracatiPage() {
           </a>
         </header>
 
-        <PilotSourceBand source={snapshot.source} competencia={competencia} inicio={inicio} fim={fim} />
+        <PilotSourceBand source={snapshot.source} periodo={snapshot.periodo} />
 
         <section className="sales-period-strip" aria-label="Período da demonstração">
           <div>
@@ -78,7 +73,7 @@ export default async function ApresentacaoAracatiPage() {
           <div>
             <Gauge size={18} />
             <span>Competências</span>
-            <strong>{snapshot.meses.length}</strong>
+            <strong>{snapshot.periodo.total}</strong>
           </div>
           <div>
             <Building2 size={18} />
