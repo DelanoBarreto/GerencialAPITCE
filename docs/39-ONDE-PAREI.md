@@ -57,7 +57,13 @@ Nota: o círculo preto flutuante que aparece nas capturas é o indicador de dev 
 
 Conferido contra a view: a soma dos 12 meses de `*_no_mes` bate exatamente com o `*_ate_mes` de dezembro (receita R$ 453.940.889, empenhado R$ 572.304.300). Os totais do painel estão corretos.
 
-## Melhorias sugeridas (não implementadas, ordenadas por valor)
+## Roadmap
+
+A ordem de trabalho daqui em diante está em **`docs/40-ROADMAP.md`**, criado a partir de auditoria do código e do banco em 2026-09-14. Ele consolida o que estava espalhado em `checklist-projeto.md`, `checklist-melhorias.md` e `proximos-passos.md`.
+
+Achado que muda a prioridade: **as rotas de API não têm autenticação** (`/api/operacao/*` dispara carga de dados sem verificar identidade, e não existe `middleware.ts`), **26 tabelas estão sem RLS** e **3 views estão com SECURITY DEFINER** — os dois últimos confirmados pelo linter de segurança do Supabase como ERROR. A Fase 1 do roadmap trata disso e bloqueia qualquer publicação.
+
+## Melhorias sugeridas (detalhadas no roadmap)
 
 1. **Filtro de período interativo** — o layout já está preparado (a faixa de período é um componente isolado), mas hoje o recorte é fixo em jan–dez/2025. É o próximo passo natural do que o usuário pediu.
 2. **`loadAracatiPilot()` é hardcoded** para Aracati/`014`/`202500` — não aceita parâmetro. Para o painel servir outros municípios, precisa receber `codigoMunicipio` e `exercicio`. Bloqueia a venda para o segundo cliente.
