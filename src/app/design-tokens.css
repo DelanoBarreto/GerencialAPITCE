@@ -1,0 +1,42 @@
+@theme {
+  --color-apitce-ink: #10233f;
+  --color-apitce-navy: #0e1f33;
+  --color-apitce-blue: #0a4a8a;
+  --color-apitce-blue-soft: #e9f2ff;
+  --color-apitce-green: #087a58;
+  --color-apitce-amber: #a65d00;
+  --color-apitce-red: #b42318;
+  --color-apitce-paper: #f6f8fc;
+}
+
+:root {
+  --ap-ink: #10233f;
+  --ap-ink-soft: #4c617a;
+  --ap-navy: #0e1f33;
+  --ap-navy-line: #24384f;
+  --ap-blue: #0a4a8a;
+  --ap-blue-dark: #062f5d;
+  --ap-blue-soft: #e9f2ff;
+  --ap-green: #087a58;
+  --ap-green-soft: #e4f6ee;
+  --ap-amber: #a65d00;
+  --ap-amber-soft: #fff3db;
+  --ap-red: #b42318;
+  --ap-red-soft: #fff0ef;
+  --ap-paper: #f6f8fc;
+  --ap-surface: #ffffff;
+  --ap-line: #dce5f0;
+  --ap-radius-sm: 10px;
+  --ap-radius-md: 16px;
+  --ap-radius-lg: 24px;
+  --ap-shadow-sm: 0 1px 2px rgb(16 35 63 / 7%), 0 8px 24px rgb(16 35 63 / 6%);
+  --ap-shadow-lg: 0 18px 48px rgb(6 47 93 / 14%);
+  --ap-space-1: 4px;
+  --ap-space-2: 8px;
+  --ap-space-3: 12px;
+  --ap-space-4: 16px;
+  --ap-space-5: 20px;
+  --ap-space-6: 24px;
+  --ap-space-8: 32px;
+  --ap-space-10: 40px;
+}
