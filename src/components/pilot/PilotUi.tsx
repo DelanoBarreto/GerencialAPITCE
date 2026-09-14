@@ -1,26 +1,14 @@
 import type { ReactNode } from "react";
-import {
-  AlertTriangle,
-  CalendarRange,
-  CheckCircle2,
-  ChevronRight,
-  Clock3,
-  Database,
-  FileWarning,
-  Landmark,
-  ShieldCheck
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, Database, FileWarning, ShieldCheck } from "lucide-react";
+import type { PeriodoInfo } from "../../lib/periodo.js";
+import { formatPeriodoInfo } from "../../lib/formatters.js";
 
 export function PilotSourceBand({
   source,
-  competencia,
-  inicio,
-  fim
+  periodo
 }: {
   source: "sim" | "demonstracao";
-  competencia: string;
-  inicio?: string;
-  fim?: string;
+  periodo: PeriodoInfo;
 }) {
   const real = source === "sim";
 
@@ -28,11 +16,15 @@ export function PilotSourceBand({
     <div className={`pilot-source-band ${real ? "is-real" : "is-demo"}`}>
       {real ? <ShieldCheck size={16} /> : <Database size={16} />}
       <span>{real ? "Dados oficiais SIM/TCE-CE" : "Dados de demonstração local"}</span>
-      <strong>
-        <CalendarRange size={15} />
-        {inicio && fim ? `Período: ${inicio} a ${fim}` : `Última competência: ${competencia}`}
+      <strong className="pilot-period-range">
+        {formatPeriodoInfo(periodo)}
+        <small>{periodo.total} competência(s)</small>
       </strong>
-      <small>Referência final: {competencia}</small>
+      {!periodo.continuo ? (
+        <span className="pilot-period-gap">
+          {periodo.faltantes.length} competência(s) sem dados no intervalo
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -46,7 +38,7 @@ export function PilotMetric({
   label: string;
   value: string;
   detail: string;
-  tone?: "blue" | "green" | "amber";
+  tone?: "blue" | "green" | "amber" | "red";
 }) {
   return (
     <article className={`pilot-metric tone-${tone}`}>
@@ -94,13 +86,3 @@ export function PilotNotice({ type, children }: { type: "ok" | "attention"; chil
   );
 }
 
-export function PilotDetailLink({ children }: { children: ReactNode }) {
-  return (
-    <button type="button" className="pilot-detail-link">
-      {children}
-      <ChevronRight size={17} />
-    </button>
-  );
-}
-
-export const PilotIcons = { Clock3, Landmark };

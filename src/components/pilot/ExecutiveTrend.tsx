@@ -1,11 +1,16 @@
 import type { PilotMonth } from "../../lib/queries/pilot.js";
-import { formatCompetencia, formatCurrencyCompact } from "../../lib/formatters.js";
+import { formatCompetencia, formatCurrency, formatCurrencyCompact } from "../../lib/formatters.js";
+import { PilotEmpty } from "./PilotUi.js";
 
 const chartWidth = 760;
 const chartHeight = 236;
 const padding = { top: 18, right: 18, bottom: 34, left: 72 };
 
 export function ExecutiveTrend({ meses }: { meses: PilotMonth[] }) {
+  if (meses.length === 0) {
+    return <PilotEmpty title="Sem competências no período" detail="Nenhum dado disponível para desenhar o gráfico." />;
+  }
+
   const maxValue = Math.max(...meses.flatMap((item) => [item.receita, item.pago]), 1);
   const receitaPoints = pointsFor(meses, "receita", maxValue);
   const pagoPoints = pointsFor(meses, "pago", maxValue);
@@ -25,6 +30,19 @@ export function ExecutiveTrend({ meses }: { meses: PilotMonth[] }) {
         ))}
         <polyline points={receitaPoints} className="pilot-chart-line income-line" />
         <polyline points={pagoPoints} className="pilot-chart-line paid-line" />
+        {meses.map((item, index) => {
+          const x = xFor(index, meses.length);
+          return (
+            <g key={`ponto-${item.competencia}`}>
+              <circle cx={x} cy={yFor(item.receita, maxValue)} r={3} className="pilot-chart-dot income-dot">
+                <title>{`${formatCompetencia(item.competencia)} · receita ${formatCurrency(item.receita)}`}</title>
+              </circle>
+              <circle cx={x} cy={yFor(item.pago, maxValue)} r={3} className="pilot-chart-dot paid-dot">
+                <title>{`${formatCompetencia(item.competencia)} · pago ${formatCurrency(item.pago)}`}</title>
+              </circle>
+            </g>
+          );
+        })}
         {meses.map((item, index) => {
           const x = xFor(index, meses.length);
           const show = meses.length <= 6 || index % 2 === 0 || index === meses.length - 1;
