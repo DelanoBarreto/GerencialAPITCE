@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { TceClient, type TceQueryParams } from "./client.js";
 import { getEndpointConfig } from "./endpoints.js";
-import { requiredEnv } from "./env.js";
+import { requiredEnv, requiredSupabaseServerKey } from "./env.js";
 import { createNaturalKey } from "./keys.js";
 import { ensureGroupSubscriptions, loadGroupEndpoints } from "./group.js";
 import { buildCompetencias } from "./competencias.js";
@@ -45,7 +45,7 @@ export async function runSyncTce(options: SyncOptions, onLog?: (msg: string) => 
 
   const supabase = options.dryRun
     ? null
-    : createClient(requiredEnv("SUPABASE_URL"), requiredEnv("SUPABASE_SERVICE_ROLE_KEY"), {
+    : createClient(requiredEnv("SUPABASE_URL"), requiredSupabaseServerKey(), {
         auth: { persistSession: false, autoRefreshToken: false }
       });
 
@@ -881,7 +881,7 @@ function applyNullableFilter<T>(
 }
 
 export async function runSyncGrupo(options: SyncGrupoOptions, onLog?: (msg: string) => void): Promise<void> {
-  const supabase = createClient(requiredEnv("SUPABASE_URL"), requiredEnv("SUPABASE_SERVICE_ROLE_KEY"), {
+  const supabase = createClient(requiredEnv("SUPABASE_URL"), requiredSupabaseServerKey(), {
     auth: { persistSession: false, autoRefreshToken: false }
   });
 
@@ -948,7 +948,7 @@ export async function runSyncGrupo(options: SyncGrupoOptions, onLog?: (msg: stri
 }
 
 export async function runSyncContasBancarias(options: SyncContasBancariasOptions, onLog?: (msg: string) => void): Promise<void> {
-  const supabase = createClient(requiredEnv("SUPABASE_URL"), requiredEnv("SUPABASE_SERVICE_ROLE_KEY"), {
+  const supabase = createClient(requiredEnv("SUPABASE_URL"), requiredSupabaseServerKey(), {
     auth: { persistSession: false, autoRefreshToken: false }
   });
 
