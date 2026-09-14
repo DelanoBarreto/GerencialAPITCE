@@ -183,10 +183,18 @@ button {
   flex-direction: column;
   gap: 8px;
   margin-top: auto;
-  padding: 16px 20px 0;
+  padding: 16px 20px 4px;
   border-top: 1px solid var(--ap-navy-line);
   font-size: 12px;
+  line-height: 1.45;
   color: rgb(255 255 255 / 55%);
+}
+
+.ap-sidebar-foot a,
+.ap-sidebar-foot span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
 }
 
 .ap-sidebar-foot a:hover {
@@ -660,6 +668,24 @@ button {
   background: var(--ap-blue-soft);
 }
 
+/* Celula com identificacao em duas linhas (nome + codigo/ano) */
+.admin-table-row > div > strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-table-row > div > small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--ap-ink-soft);
+}
+
+.admin-table-row.danger {
+  border-left: 3px solid var(--ap-red);
+}
+
 .admin-table-toolbar {
   display: flex;
   align-items: center;
@@ -766,10 +792,14 @@ button {
 }
 
 .admin-activity strong {
+  display: block;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .admin-activity span {
+  display: block;
+  margin-top: 2px;
   color: var(--ap-ink-soft);
   font-size: 12px;
 }
@@ -865,6 +895,14 @@ button {
 .admin-card-cta:hover {
   border-color: var(--ap-blue);
   background: var(--ap-blue-soft);
+}
+
+/* Acao de linha e so o icone: precisa de area de toque quadrada. */
+.admin-row-action {
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
 }
 
 /* Cards de dados e notas */
@@ -1655,6 +1693,29 @@ button {
   .admin-table-row {
     grid-template-columns: minmax(0, 1fr);
     gap: 4px;
+    text-align: left;
+  }
+
+  /* Sem cabecalho fixo, cada celula precisa dizer o que e. */
+  .admin-table-row > span[data-label]::before {
+    content: attr(data-label);
+    display: inline-block;
+    min-width: 96px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ap-ink-soft);
+  }
+
+  .admin-gestao-grid {
+    text-align: left;
+  }
+
+  .admin-gestao-grid > span:first-child {
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--ap-line);
+    margin-bottom: 4px;
   }
 }
 

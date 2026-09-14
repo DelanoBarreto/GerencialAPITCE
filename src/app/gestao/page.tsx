@@ -145,10 +145,10 @@ export default async function GestaoPage() {
           {snapshot.meses.map((mes) => (
             <div className="admin-table-row admin-gestao-grid" key={mes.competencia}>
               <span>{formatCompetencia(mes.competencia)}</span>
-              <span>{formatCurrency(mes.receita)}</span>
-              <span>{formatCurrency(mes.empenhado)}</span>
-              <span>{formatCurrency(mes.liquidado)}</span>
-              <span>{formatCurrency(mes.pago)}</span>
+              <span data-label="Receita">{formatCurrency(mes.receita)}</span>
+              <span data-label="Empenhado">{formatCurrency(mes.empenhado)}</span>
+              <span data-label="Liquidado">{formatCurrency(mes.liquidado)}</span>
+              <span data-label="Pago">{formatCurrency(mes.pago)}</span>
             </div>
           ))}
         </div>

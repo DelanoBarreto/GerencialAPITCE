@@ -828,13 +828,38 @@ async function finishSyncLog(supabase: any, id: string | null, status: "ok" | "e
 
   const { error: updateError } = await supabase.from("tce_sync_log").update({
     status,
-    error_message: error instanceof Error ? error.message : error ? String(error) : null,
+    error_message: describeError(error),
     finished_at: new Date().toISOString()
   }).eq("id", id);
 
   if (updateError) {
     console.warn(`Falha ao atualizar sync_log: ${updateError.message}`);
   }
+}
+
+// Erros do Supabase e da API do TCE chegam como objetos simples, nao como Error.
+// String(objeto) viraria "[object Object]" e perderia a causa real da falha.
+function describeError(error: unknown): string | null {
+  if (!error) return null;
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message;
+
+  if (typeof error === "object") {
+    const candidato = error as { message?: unknown; details?: unknown; hint?: unknown; code?: unknown };
+    const partes = [candidato.message, candidato.details, candidato.hint]
+      .filter((parte): parte is string => typeof parte === "string" && parte.length > 0);
+
+    const codigo = typeof candidato.code === "string" || typeof candidato.code === "number" ? `[${candidato.code}] ` : "";
+    if (partes.length) return `${codigo}${partes.join(" · ")}`;
+
+    try {
+      return `${codigo}${JSON.stringify(error)}`.slice(0, 500);
+    } catch {
+      return `${codigo}erro não serializável`;
+    }
+  }
+
+  return String(error);
 }
 
 async function hasSuccessfulSync(supabase: any, configEndpoint: string, queryParams: TceQueryParams): Promise<boolean> {

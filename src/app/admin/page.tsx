@@ -33,7 +33,7 @@ export default async function AdminDashboardPage() {
 
   const escoposComFalha = data.scopeRows.filter((row) => row.status === "erro");
   const escoposPendentes = data.scopeRows.filter((row) => row.status === "pendente");
-  const logsComErro = data.logs.filter((log) => log.status === "error").slice(0, 4);
+  const logsComErro = dedupePorEndpoint(data.logs.filter((log) => log.status === "error")).slice(0, 4);
   const semPendencia =
     escoposComFalha.length === 0 && escoposPendentes.length === 0 && logsComErro.length === 0;
 
@@ -93,7 +93,7 @@ export default async function AdminDashboardPage() {
                 tone="erro"
                 titulo={`Falha em ${log.endpoint}`}
                 detalhe={
-                  log.error_message ??
+                  mensagemUtil(log.error_message) ??
                   `Município ${log.codigo_municipio ?? "não informado"}, competência ${log.data_referencia_doc ?? "não informada"}.`
                 }
                 acao="Ver log"
@@ -209,6 +209,24 @@ function AdminKpi({
       <small>{detail}</small>
     </article>
   );
+}
+
+// Registros antigos gravaram "[object Object]" antes da correcao em sync-runner.
+function mensagemUtil(mensagem: string | null) {
+  if (!mensagem) return undefined;
+  const limpa = mensagem.trim();
+  if (!limpa || limpa === "[object Object]") return undefined;
+  return limpa;
+}
+
+function dedupePorEndpoint<T extends { endpoint: string; codigo_municipio: string | null }>(logs: T[]) {
+  const vistos = new Set<string>();
+  return logs.filter((log) => {
+    const chave = `${log.endpoint}::${log.codigo_municipio ?? ""}`;
+    if (vistos.has(chave)) return false;
+    vistos.add(chave);
+    return true;
+  });
 }
 
 function monthLabelToCompetencia(value: string) {
