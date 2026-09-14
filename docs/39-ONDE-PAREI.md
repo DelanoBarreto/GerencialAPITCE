@@ -40,13 +40,32 @@ Usuário rejeitou as 3 telas ("pobre, confuso, feio"). Pediu dashboard com sideb
 
 **Verificado antes de parar (2026-09-14):** `npm test` (6/6 passam), `npm run typecheck` (limpo) e `npm run build` (compila todas as rotas) — todos rodados com sucesso no estado atual.
 
-**Falta fazer (task 8 do plano, a última):**
-- Rodar `npm run dev`, instalar o browser do Playwright (`npx playwright install chromium`) e capturar screenshots de `/admin`, `/gestao`, `/apresentacao/aracati` em desktop (1440px) e mobile (390px) — o script `scripts/screenshot.ts` ainda precisa ser criado conforme o plano (Task 8, Step 1).
-- Criticar o resultado visualmente e ajustar `src/app/styles.css` diretamente (nunca empilhar uma nova camada por cima — foi isso que degradou o arquivo antes).
-- Repetir até ficar apresentável, então mostrar as capturas ao usuário com um resumo do que mudou.
-- Detalhe a conferir: a classe `.admin-gestao-grid` foi adicionada ao CSS para a tabela mensal de `/gestao` — vale checar visualmente se o alinhamento numérico (`tabular-nums`) está bom nessa tabela.
+**Task 8 concluída (2026-09-14).** O redesign está completo. `scripts/screenshot.ts` criado (Playwright, captura 5 rotas em 1440px e 390px para `.screenshots/`, que está no gitignore). Rodar com o dev server no ar: `npx tsx scripts/screenshot.ts`.
 
-**Este é o único passo restante do plano.** Depois da Task 8, o redesign está completo.
+### Bugs encontrados na inspeção visual e corrigidos
+
+1. **`[object Object]` gravado no banco** (o mais grave): `sync-runner.ts:831` usava `String(error)` em erros do Supabase/TCE, que são objetos simples e não instâncias de `Error`. Toda falha registrada até agora perdeu a causa real. Corrigido com `describeError()`, que extrai `message`/`details`/`hint`/`code`. O admin também ignora os `[object Object]` já gravados.
+2. Falhas duplicadas do mesmo endpoint apareciam repetidas na fila de atenção — agora deduplicadas.
+3. Textos grudados (`ARACATI014 / 2026`, `unidades_orcamentariasmunicípio 014`) porque `strong`/`small`/`span` são inline por padrão — corrigido no CSS.
+4. Tabela mensal da gestão no celular mostrava quatro números sem dizer o que eram — agora cada célula tem rótulo via `data-label`.
+5. Botão de ação de linha sem área de toque — agora 34x34px.
+6. **Alerta enganoso na gestão**: acusava atenção sempre que empenho > receita, o que é rotina no setor público (Aracati empenhou R$ 228 mi em janeiro — dado real, é o orçamento anual empenhado na abertura). O critério agora é pagamento acima da arrecadação, que é o que pressiona caixa de verdade.
+
+Nota: o círculo preto flutuante que aparece nas capturas é o indicador de dev do Next.js, não existe em produção.
+
+### Validação dos números
+
+Conferido contra a view: a soma dos 12 meses de `*_no_mes` bate exatamente com o `*_ate_mes` de dezembro (receita R$ 453.940.889, empenhado R$ 572.304.300). Os totais do painel estão corretos.
+
+## Melhorias sugeridas (não implementadas, ordenadas por valor)
+
+1. **Filtro de período interativo** — o layout já está preparado (a faixa de período é um componente isolado), mas hoje o recorte é fixo em jan–dez/2025. É o próximo passo natural do que o usuário pediu.
+2. **`loadAracatiPilot()` é hardcoded** para Aracati/`014`/`202500` — não aceita parâmetro. Para o painel servir outros municípios, precisa receber `codigoMunicipio` e `exercicio`. Bloqueia a venda para o segundo cliente.
+3. **Usar `*_ate_mes` da view em vez de somar 12 meses** no cliente — a view já traz o acumulado pronto; a soma manual funciona mas é trabalho redundante.
+4. **`updatedAt` do snapshot é `new Date()`**, ou seja, a hora da requisição, não da última carga real. Nenhuma tela usa hoje, mas é uma informação falsa esperando para ser exibida.
+5. **`sync-runner.ts` tem ~1.130 linhas** e continua monolítico — a quebra em mappers por tabela é pendência antiga de `docs/checklist-melhorias.md`, prioridade alta lá.
+6. **Dados comerciais de `/admin/clientes` são mock** — a tela já avisa, mas em algum momento precisa de origem real.
+7. **Sem autenticação/RLS** — pré-requisito registrado abaixo, continua valendo: não publicar a área gerencial para clientes antes disso.
 
 ## Cuidados
 

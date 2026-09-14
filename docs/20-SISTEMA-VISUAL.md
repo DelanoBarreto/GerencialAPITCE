@@ -46,3 +46,7 @@ O projeto conserva `moduleResolution: NodeNext`; por isso, componentes novos dev
 Validar as telas em desktop, iPhone pequeno, iPhone grande e Android. Registrar no `docs/39-ONDE-PAREI.md` as rotas validadas, a data e eventuais pendências.
 
 Em 2026-09-13, confirmado que `/apresentacao/aracati` e `/gestao` renderizam `PilotSourceBand` com a classe `is-real` e o texto "Dados oficiais SIM/TCE-CE" — a leitura da view do Supabase está funcionando, não é o fallback de demonstração. Detalhes da investigação em `docs/39-ONDE-PAREI.md`.
+
+Em 2026-09-14, após o redesign com sidebar: `/admin`, `/gestao`, `/apresentacao/aracati`, `/admin/dados` e `/admin/municipios` capturadas em 1440 px e 390 px via `npx tsx scripts/screenshot.ts` (Playwright). Correções aplicadas a partir dessa inspeção estão listadas em `docs/39-ONDE-PAREI.md`. As capturas ficam em `.screenshots/`, fora do versionamento.
+
+O shell de dashboard (`src/components/shell/DashboardShell.tsx`) é o layout padrão das telas de trabalho: sidebar escura de 240 px à esquerda com marca, escopo e navegação, e cabeçalho com título e período à direita. Abaixo de 1100 px a sidebar vira barra horizontal rolável; abaixo de 760 px o admin cede lugar ao `admin-mobile-gate`, enquanto a gestão continua acessível.
