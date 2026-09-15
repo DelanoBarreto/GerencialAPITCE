@@ -104,9 +104,9 @@
 **Arquivos:** `docs/39-ONDE-PAREI.md`, `docs/40-ROADMAP.md`, `docs/41-MIGRACAO-PLATAFORMA.md`, `README.md` e este plano.
 
 - [x] Executar `npm test`, `npm run typecheck`, `npm run build`, `git diff --check`, `npm run test:browser:anon`, `npm audit --omit=dev` e a verificacao das 11 migrations; todos passaram em 2026-09-15.
-- [ ] Verificar `git status --short` e stage apenas os arquivos TCE deste plano; nao stage arquivos preexistentes nao rastreados.
-- [ ] Commitar apenas fase local validada na branch isolada e enviar essa branch ao GitHub, sem merge em `main` ou deploy automatico.
-- [ ] Atualizar `docs/39-ONDE-PAREI.md` com commit, testes, limite de validacao remota e proxima acao exata.
+- [x] Verificar `git status --short` e stage apenas os arquivos TCE deste plano; `AGENTS.md`, `CLAUDE.md` e scratchpad preexistentes ficaram fora.
+- [x] Commitar apenas fase local validada como `692851e` e enviar `codex/apitce-produto-seguro` ao GitHub, sem merge em `main` ou deploy automatico.
+- [x] Atualizar `docs/39-ONDE-PAREI.md` com commit, testes, limite de validacao remota e proxima acao exata.
 
 ## Criterio de encerramento
 
