@@ -1,4 +1,4 @@
-import { createSupabaseAdminClient, hasSupabaseConfig } from "../supabase/admin.js";
+import { createSupabaseServerClient } from "../supabase/server.js";
 
 export type SyncLog = {
   endpoint: string;
@@ -30,11 +30,7 @@ export async function loadSyncLogs(
   exercicio: string,
   limit = 8
 ): Promise<SyncLog[]> {
-  if (!hasSupabaseConfig()) {
-    return [];
-  }
-
-  const supabase = createSupabaseAdminClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("tce_sync_log")
     .select("endpoint,data_referencia_doc,rows_received,status,started_at,finished_at")
@@ -55,11 +51,7 @@ export async function loadEndpointStatus(
   codigoMunicipio: string,
   exercicio: string
 ): Promise<EndpointStatus[]> {
-  if (!hasSupabaseConfig()) {
-    return [];
-  }
-
-  const supabase = createSupabaseAdminClient();
+  const supabase = await createSupabaseServerClient();
 
   const [{ data: subscriptions, error: subErr }, { data: catalog, error: catErr }, { data: logs, error: logErr }] =
     await Promise.all([
@@ -120,11 +112,7 @@ export async function loadEndpointStatus(
 
 /** Contagem de erros registrados. */
 export async function countErrors(codigoMunicipio: string, exercicio: string): Promise<number> {
-  if (!hasSupabaseConfig()) {
-    return 0;
-  }
-
-  const supabase = createSupabaseAdminClient();
+  const supabase = await createSupabaseServerClient();
   const { count, error } = await supabase
     .from("tce_sync_log")
     .select("*", { count: "exact", head: true })
@@ -138,11 +126,7 @@ export async function countErrors(codigoMunicipio: string, exercicio: string): P
 
 /** Contagem de contas bancárias. */
 export async function countContasBancarias(codigoMunicipio: string, exercicio: string): Promise<number> {
-  if (!hasSupabaseConfig()) {
-    return 0;
-  }
-
-  const supabase = createSupabaseAdminClient();
+  const supabase = await createSupabaseServerClient();
   const { count, error } = await supabase
     .from("tce_contas_bancarias_municipio")
     .select("*", { count: "exact", head: true })

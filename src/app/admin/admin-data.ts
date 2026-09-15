@@ -1,4 +1,7 @@
-import { createSupabaseAdminClient, hasSupabaseConfig } from "../../lib/supabase/admin.js";
+import { createSupabaseServerClient } from "../../lib/supabase/server.js";
+import { formatInt, relativeTime } from "./format-utils.js";
+
+export { formatInt, relativeTime } from "./format-utils.js";
 
 export type AdminMunicipio = {
   codigo_municipio: string;
@@ -90,106 +93,10 @@ export type AdminData = {
   };
 };
 
-const fallbackMunicipios: AdminMunicipio[] = [
-  { codigo_municipio: "014", nome_municipio: "ARACATI" },
-  { codigo_municipio: "120", nome_municipio: "QUIXADA" },
-  { codigo_municipio: "024", nome_municipio: "CRATO" },
-  { codigo_municipio: "158", nome_municipio: "SOBRAL" },
-  { codigo_municipio: "061", nome_municipio: "IGUATU" }
-];
-
-const fallbackClients: AdminClient[] = [
-  {
-    id: "CLI-001",
-    nome: "Prefeitura de Aracati",
-    contato: "gestao@aracati.ce.gov.br",
-    municipio: "ARACATI",
-    ano: 2025,
-    plano: "Gestao municipal",
-    pagamento: "confirmado",
-    liberacao: "disponivel"
-  },
-  {
-    id: "CLI-002",
-    nome: "Escritorio Melo Contabil",
-    contato: "atendimento@melocontabil.com.br",
-    municipio: "SOBRAL",
-    ano: 2025,
-    plano: "Contabil multiusuario",
-    pagamento: "confirmado",
-    liberacao: "carregando"
-  },
-  {
-    id: "CLI-003",
-    nome: "Assessoria Publica Ceara",
-    contato: "suporte@apce.com.br",
-    municipio: "QUIXADA",
-    ano: 2025,
-    plano: "Gerencial",
-    pagamento: "pendente",
-    liberacao: "pendente"
-  },
-  {
-    id: "CLI-004",
-    nome: "Consultoria Gestor Norte",
-    contato: "operacao@gestornorte.com.br",
-    municipio: "CRATO",
-    ano: 2025,
-    plano: "Relatorios avancados",
-    pagamento: "confirmado",
-    liberacao: "revisao"
-  },
-  {
-    id: "CLI-005",
-    nome: "Controle Municipal Ltda",
-    contato: "financeiro@controlemunicipal.com",
-    municipio: "IGUATU",
-    ano: 2025,
-    plano: "Monitoramento",
-    pagamento: "atrasado",
-    liberacao: "suspenso"
-  }
-];
-
-const fallbackGroups: AdminGroup[] = [
-  { slug: "auxiliares", nome: "Auxiliares", ordem: 1 },
-  { slug: "bas", nome: "Documentacao de Informacoes Basicas (BAS)", ordem: 2 },
-  { slug: "orc", nome: "Documentacao referente ao Orcamento Municipal (ORC)", ordem: 3 },
-  { slug: "bal", nome: "Documentacao referente aos Balancetes (BAL)", ordem: 4 }
-];
-
 export async function loadAdminData(): Promise<AdminData> {
-  if (!hasSupabaseConfig()) {
-    const monitorados = [{ codigo_municipio: "014", nome_municipio: "ARACATI", ano: 2025, exercicio_orcamento: "202500", ativo: true, sincronizacao_automatica: true }];
-    const clients = fallbackClients;
-    const logs: AdminSyncLog[] = [];
-    const grupos = fallbackGroups;
-    const municipios = fallbackMunicipios;
-    const scopeRows = buildScopeRows(monitorados, logs, clients);
-
-    return {
-      monitorados,
-      municipios,
-      logs,
-      grupos,
-      catalog: [],
-      subscriptions: [],
-      clients,
-      scopeRows,
-      kpis: {
-        municipiosAtivos: monitorados.length,
-        clientesAtivos: clients.filter((client) => client.liberacao !== "suspenso").length,
-        syncs24h: 0,
-        falhas: 0,
-        alertas: 0,
-        registros24h: 0
-      }
-    };
-  }
-
-  const supabase = createSupabaseAdminClient();
+  const supabase = await createSupabaseServerClient();
   const [municipiosResult, monitoradosResult, logsResult, gruposResult, catalogResult, subscriptionsResult] = await Promise.all([
-    supabase.from("municipios").select("codigo_municipio,nome_municipio").order("nome_municipio", { ascending: true }),
+    supabase.rpc("listar_municipios"),
     supabase
       .from("tce_municipio_exercicios_monitorados")
       .select("codigo_municipio,ano,exercicio_orcamento,ativo,sincronizacao_automatica")
@@ -210,26 +117,30 @@ export async function loadAdminData(): Promise<AdminData> {
       .order("endpoint", { ascending: true })
   ]);
 
-  const municipios = ((municipiosResult.data as AdminMunicipio[] | null) ?? fallbackMunicipios).length
-    ? ((municipiosResult.data as AdminMunicipio[] | null) ?? fallbackMunicipios)
-    : fallbackMunicipios;
+  for (const [name, result] of [
+    ["municipios", municipiosResult],
+    ["monitorados", monitoradosResult],
+    ["logs", logsResult],
+    ["grupos", gruposResult],
+    ["catalogo", catalogResult],
+    ["assinaturas", subscriptionsResult]
+  ] as const) {
+    if (result.error) throw new Error(`[admin] consulta ${name} falhou: ${result.error.code}`);
+  }
+
+  const municipios = (municipiosResult.data ?? []) as AdminMunicipio[];
   const nameByCode = new Map(municipios.map((item) => [item.codigo_municipio, item.nome_municipio]));
-  const monitoradoRows =
-    ((monitoradosResult.data as Array<Omit<AdminMonitorado, "nome_municipio">> | null) ?? []).length > 0
-      ? ((monitoradosResult.data as Array<Omit<AdminMonitorado, "nome_municipio">>) ?? [])
-      : [{ codigo_municipio: "014", ano: 2025, exercicio_orcamento: "202500", ativo: true, sincronizacao_automatica: true }];
+  const monitoradoRows = (monitoradosResult.data ?? []) as Array<Omit<AdminMonitorado, "nome_municipio">>;
 
   const monitorados = monitoradoRows.map((item) => ({
     ...item,
     nome_municipio: nameByCode.get(item.codigo_municipio) ?? item.codigo_municipio
   }));
   const logs = ((logsResult.data as AdminSyncLog[] | null) ?? []).filter(Boolean);
-  const grupos = ((gruposResult.data as AdminGroup[] | null) ?? fallbackGroups).length
-    ? ((gruposResult.data as AdminGroup[] | null) ?? fallbackGroups)
-    : fallbackGroups;
+  const grupos = (gruposResult.data ?? []) as AdminGroup[];
   const catalog = ((catalogResult.data as AdminEndpointCatalog[] | null) ?? []).filter(Boolean);
   const subscriptions = ((subscriptionsResult.data as AdminSubscription[] | null) ?? []).filter(Boolean);
-  const clients = fallbackClients;
+  const clients: AdminClient[] = [];
   const scopeRows = buildScopeRows(monitorados, logs, clients);
   const since24h = Date.now() - 24 * 60 * 60 * 1000;
   const logs24h = logs.filter((log) => new Date(log.started_at).getTime() >= since24h);
@@ -355,32 +266,6 @@ export function groupRowsForScope(data: AdminData, codigoMunicipio: string, exer
       errors
     };
   });
-}
-
-export function formatInt(value: number): string {
-  return new Intl.NumberFormat("pt-BR").format(value);
-}
-
-export function relativeTime(value: string): string {
-  const diffMs = Date.now() - new Date(value).getTime();
-  const minutes = Math.max(0, Math.round(diffMs / 60_000));
-
-  if (minutes < 1) {
-    return "agora";
-  }
-
-  if (minutes < 60) {
-    return `ha ${minutes} min`;
-  }
-
-  const hours = Math.round(minutes / 60);
-
-  if (hours < 24) {
-    return `ha ${hours} h`;
-  }
-
-  const days = Math.round(hours / 24);
-  return `ha ${days} dias`;
 }
 
 function latestAvailableMonth(months: Set<string>): string {

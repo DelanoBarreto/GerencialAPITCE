@@ -1,13 +1,25 @@
 import { ArrowRight, BarChart3, Building2, CalendarRange, CircleCheckBig, Gauge, Landmark, Smartphone } from "lucide-react";
+import { redirect } from "next/navigation.js";
 import { ExecutiveTrend } from "../../../components/pilot/ExecutiveTrend.js";
 import { PilotMetric, PilotNotice, PilotSection, PilotSourceBand } from "../../../components/pilot/PilotUi.js";
 import { formatCurrency, formatCurrencyCompact, formatPeriodoInfo } from "../../../lib/formatters.js";
-import { loadAracatiPilot } from "../../../lib/queries/pilot.js";
+import { canAccessMunicipio, requireTcePage } from "../../../lib/auth/access.js";
+import { loadPilot } from "../../../lib/queries/pilot.js";
 
 export const dynamic = "force-dynamic";
 
 export default async function ApresentacaoAracatiPage() {
-  const snapshot = await loadAracatiPilot();
+  redirect("/apresentacao/014/202500");
+}
+
+export async function ApresentacaoView({ codigo, exercicio }: Readonly<{ codigo: string; exercicio: string }>) {
+  const route = `/apresentacao/${codigo}/${exercicio}`;
+  const access = await requireTcePage(route);
+  if (!/^\d{3}$/.test(codigo) || !/^\d{4}00$/.test(exercicio) || !canAccessMunicipio(access, codigo)) {
+    redirect("/acesso-negado");
+  }
+  const municipio = access.municipios.find((item) => item.codigo_municipio === codigo);
+  const snapshot = await loadPilot(codigo, exercicio, municipio?.nome_municipio ?? `Municipio ${codigo}`);
   const totals = snapshot.meses.reduce(
     (acc, month) => ({
       receita: acc.receita + month.receita,
@@ -23,7 +35,7 @@ export default async function ApresentacaoAracatiPage() {
   return (
     <main className="sales-pilot">
       <aside className="sales-sidebar" aria-label="Navegação da apresentação">
-        <a href="/apresentacao/aracati" className="sales-brand">
+        <a href={route} className="sales-brand">
           <span>AP</span>
           <strong>APITCE</strong>
         </a>
@@ -43,7 +55,7 @@ export default async function ApresentacaoAracatiPage() {
           <strong>{snapshot.municipio}</strong>
           <small>CE · código {snapshot.codigoMunicipio}</small>
         </div>
-        <a className="sales-sidebar-action" href="/admin">
+        <a className="sales-sidebar-action" href={access.role === "superadmin" ? "/admin" : `/gestao/${codigo}/${exercicio}`}>
           Central operacional <ArrowRight size={16} />
         </a>
       </aside>
@@ -54,10 +66,10 @@ export default async function ApresentacaoAracatiPage() {
             <span className="sales-kicker">
               <Landmark size={16} /> Demonstração comercial com dados identificados
             </span>
-            <h1>Aracati em painel executivo</h1>
+            <h1>{snapshot.municipio} em painel executivo</h1>
             <p>Receita, despesa e saldo com fonte, início e fim do período visíveis antes dos números.</p>
           </div>
-          <a className="sales-secondary" href="/gestao">
+          <a className="sales-secondary" href={`/gestao/${codigo}/${exercicio}`}>
             <Smartphone size={17} /> Ver no celular
           </a>
         </header>
@@ -127,10 +139,10 @@ export default async function ApresentacaoAracatiPage() {
 
         <PilotNotice type={snapshot.source === "sim" ? "ok" : "attention"}>
           <span>
-            <strong>{snapshot.source === "sim" ? "Fonte oficial carregada." : "Prévia local de demonstração."}</strong>{" "}
+            <strong>{snapshot.source === "sim" ? "Fonte oficial carregada." : "Sem dados oficiais disponíveis."}</strong>{" "}
             {snapshot.source === "sim"
               ? `Valores oficiais SIM/TCE-CE no recorte ${periodo}.`
-              : "Conecte o Supabase para apresentar os valores oficiais carregados."}
+              : "A apresentação ficará disponível após a carga e validação dos dados deste recorte."}
           </span>
         </PilotNotice>
       </section>

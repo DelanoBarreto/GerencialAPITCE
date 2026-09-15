@@ -1,5 +1,7 @@
 # Proximos passos do APITCE
 
+> Registro histórico. Ordem e status atuais: `docs/40-ROADMAP.md` e `docs/39-ONDE-PAREI.md`.
+
 ## Ordem recomendada
 
 1. Melhorar cadastro de municipio para buscar direto na API do TCE quando ainda nao existir no banco local.

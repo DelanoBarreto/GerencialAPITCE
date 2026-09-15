@@ -1,4 +1,4 @@
-import { hasSupabaseConfig, createSupabaseAdminClient } from "../supabase/admin.js";
+import { createSupabaseServerClient } from "../supabase/server.js";
 import { describePeriodo, type PeriodoInfo } from "../periodo.js";
 
 export type PilotMonth = {
@@ -15,42 +15,39 @@ export type PilotSnapshot = {
   exercicio: string;
   meses: PilotMonth[];
   periodo: PeriodoInfo;
-  source: "sim" | "demonstracao";
+  source: "sim" | "sem_dados";
   updatedAt: string | null;
 };
 
-const fallbackMonths: PilotMonth[] = [
-  { competencia: "202501", receita: 18500000, empenhado: 16200000, liquidado: 12300000, pago: 11600000 },
-  { competencia: "202502", receita: 20100000, empenhado: 17400000, liquidado: 13900000, pago: 12600000 },
-  { competencia: "202503", receita: 19400000, empenhado: 18100000, liquidado: 14500000, pago: 13700000 },
-  { competencia: "202504", receita: 22000000, empenhado: 19800000, liquidado: 15800000, pago: 14900000 },
-  { competencia: "202505", receita: 21100000, empenhado: 20400000, liquidado: 16400000, pago: 15700000 },
-  { competencia: "202506", receita: 22900000, empenhado: 21800000, liquidado: 17900000, pago: 16800000 }
-];
-
-export async function loadAracatiPilot(): Promise<PilotSnapshot> {
+export async function loadPilot(
+  codigoMunicipio: string,
+  exercicio: string,
+  municipioNome: string
+): Promise<PilotSnapshot> {
   const fallback = (): PilotSnapshot => ({
-    municipio: "Aracati",
-    codigoMunicipio: "014",
-    exercicio: "202500",
-    meses: fallbackMonths,
-    periodo: describePeriodo(fallbackMonths.map((m) => m.competencia)),
-    source: "demonstracao",
+    municipio: municipioNome,
+    codigoMunicipio,
+    exercicio,
+    meses: [],
+    periodo: describePeriodo([]),
+    source: "sem_dados",
     updatedAt: null
   });
 
-  if (!hasSupabaseConfig()) return fallback();
-
   try {
-    const supabase = createSupabaseAdminClient();
+    const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from("vw_tce_execucao_orcamentaria_mensal")
       .select("data_referencia_doc,receita_arrecadada_no_mes,despesa_empenhada_no_mes,despesa_liquidada_no_mes,despesa_paga_no_mes")
-      .eq("codigo_municipio", "014")
-      .eq("exercicio_orcamento", "202500")
+      .eq("codigo_municipio", codigoMunicipio)
+      .eq("exercicio_orcamento", exercicio)
       .order("data_referencia_doc", { ascending: true });
 
-    if (error || !data?.length) return fallback();
+    if (error) {
+      console.error("[gestao] consulta da view falhou", { codigoMunicipio, exercicio, code: error.code });
+      return fallback();
+    }
+    if (!data?.length) return fallback();
 
     const aggregate = new Map<string, PilotMonth>();
     for (const row of data) {
@@ -66,17 +63,27 @@ export async function loadAracatiPilot(): Promise<PilotSnapshot> {
     const meses = [...aggregate.values()].sort((a, b) => a.competencia.localeCompare(b.competencia));
 
     return {
-      municipio: "Aracati",
-      codigoMunicipio: "014",
-      exercicio: "202500",
+      municipio: municipioNome,
+      codigoMunicipio,
+      exercicio,
       meses,
       periodo: describePeriodo(meses.map((m) => m.competencia)),
       source: "sim",
-      updatedAt: new Date().toISOString()
+      updatedAt: null
     };
-  } catch {
+  } catch (error) {
+    console.error("[gestao] falha ao carregar dados reais do municipio", {
+      codigoMunicipio,
+      exercicio,
+      error: error instanceof Error ? error.message : "erro desconhecido"
+    });
     return fallback();
   }
+}
+
+/** Compatibilidade temporaria para a rota legada de Aracati. */
+export function loadAracatiPilot(): Promise<PilotSnapshot> {
+  return loadPilot("014", "202500", "Aracati");
 }
 
 function numberValue(value: unknown) {

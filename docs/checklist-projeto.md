@@ -1,5 +1,7 @@
 # Checklist do projeto APITCE
 
+> Registro histórico. Ordem e status atuais: `docs/40-ROADMAP.md` e `docs/39-ONDE-PAREI.md`.
+
 Este checklist resume o estado atual e a ordem recomendada de continuidade.
 
 ## Estado já concluído
@@ -86,4 +88,3 @@ Este checklist resume o estado atual e a ordem recomendada de continuidade.
 - A interface deve se comportar como uma tela de `14" a 15"`.
 - Em monitores grandes, o conteúdo deve continuar centralizado e contido.
 - O admin precisa ser claro, leve e direto.
-

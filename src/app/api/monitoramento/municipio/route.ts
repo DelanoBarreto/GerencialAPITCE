@@ -1,5 +1,7 @@
 import { createSupabaseAdminClient } from "../../../../lib/supabase/admin.js";
-import { TceClient } from "../../../../lib/tce/client.js";
+import { authorizeInternalOperation } from "../../../../lib/auth/operation.js";
+import { createSupabaseServerClient } from "../../../../lib/supabase/server.js";
+import { acquireOperationLock } from "../../../../lib/ops/operation-lock.js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,30 +12,39 @@ type MonitorBody = {
 };
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as MonitorBody;
-  const codigoMunicipio = String(body.codigoMunicipio ?? "");
-  const ano = Number(body.ano);
+  const authorization = await authorizeInternalOperation(request);
+  if (!authorization.ok) return authorization.response;
 
-  if (!/^\d{3}$/.test(codigoMunicipio)) {
+  let body: MonitorBody;
+  try {
+    body = (await request.json()) as MonitorBody;
+  } catch {
+    return Response.json({ ok: false, message: "JSON invalido." }, { status: 400 });
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return Response.json({ ok: false, message: "Parametros invalidos." }, { status: 400 });
+  }
+  const codigoMunicipio = body.codigoMunicipio;
+  const ano = body.ano;
+
+  if (typeof codigoMunicipio !== "string" || !/^\d{3}$/.test(codigoMunicipio)) {
     return Response.json({ ok: false, message: "Codigo do municipio invalido." }, { status: 400 });
   }
 
-  if (!Number.isInteger(ano) || ano < 2000 || ano > 2100) {
+  if (typeof ano !== "number" || !Number.isInteger(ano) || ano < 2000 || ano > 2099) {
     return Response.json({ ok: false, message: "Ano invalido." }, { status: 400 });
   }
 
-  const supabase = createSupabaseAdminClient();
+  const userClient = await createSupabaseServerClient();
+  const { data: municipios, error: municipioError } = await userClient.rpc("listar_municipios");
+  const municipio = Array.isArray(municipios)
+    ? municipios.find((item) => item?.codigo_municipio === codigoMunicipio)
+    : null;
   const exercicio = `${ano}00`;
   const now = new Date().toISOString();
 
   // O catalogo da plataforma ja traz os 184 municipios do Ceara, entao basta
   // validar que o codigo existe — nao e mais preciso buscar no TCE.
-  const { data: municipio, error: municipioError } = await supabase
-    .from("municipios")
-    .select("codigo_municipio")
-    .eq("codigo_municipio", codigoMunicipio)
-    .maybeSingle();
-
   if (municipioError) {
     return Response.json({ ok: false, message: "Erro ao consultar o catalogo de municipios." }, { status: 500 });
   }
@@ -41,6 +52,21 @@ export async function POST(request: Request) {
   if (!municipio) {
     return Response.json({ ok: false, message: "Municipio nao encontrado no catalogo." }, { status: 404 });
   }
+
+  const release = await acquireOperationLock({
+    key: `monitor:${codigoMunicipio}:${exercicio}`,
+    userId: authorization.user.id,
+    action: "monitor",
+    codigoMunicipio,
+    exercicio,
+    target: codigoMunicipio
+  });
+  if (!release) {
+    return Response.json({ ok: false, message: "Este cadastro ja esta em andamento." }, { status: 409 });
+  }
+
+  try {
+  const supabase = createSupabaseAdminClient();
 
   const { error: monitorError } = await supabase.from("tce_municipios_monitorados").upsert(
     {
@@ -103,8 +129,13 @@ export async function POST(request: Request) {
     }
   }
 
+  await release("ok");
   return Response.json({
     ok: true,
     message: `Monitoramento cadastrado: municipio ${codigoMunicipio}, exercicio ${exercicio}.`
   });
+  } catch (error) {
+    await release("erro", error instanceof Error ? error.message : "erro desconhecido");
+    return Response.json({ ok: false, message: "Falha interna ao cadastrar monitoramento." }, { status: 500 });
+  }
 }

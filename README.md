@@ -1,5 +1,21 @@
 # APITCE
 
+> Estado em 2026-09-15: desenvolvimento de autenticação/RLS multi-município preparado na branch `codex/apitce-produto-seguro`, **ainda não aplicado nem validado em produção**. Leia `docs/39-ONDE-PAREI.md` antes de executar comandos que escrevem no banco.
+
+O banco oficial escolhido é o Supabase compartilhado `PortalGov-Producao`, schema `tce`. `plataforma` é a camada privada de identidade/vínculos e `portalgov` pertence a outro sistema; nenhum comando deste repositório deve alterar objetos `portalgov`. As migrations do banco APITCE antigo ficam em `supabase/legacy-apitce-isolated/` somente para histórico. Consulte `supabase/README.md`, `docs/42-ARQUITETURA-SEGURANCA-APITCE.md` e o plano adicional `docs/superpowers/plans/2026-09-15-apitce-produto-seguro.md`.
+
+Para a aplicação autenticada, configure em `.env`/runtime `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e `APITCE_APP_ORIGIN` (origin HTTPS canônico em produção). `SUPABASE_SECRET_KEY` é exclusiva do servidor/ETL; nunca prefixar com `NEXT_PUBLIC_`, colar no chat ou commitar. O proxy renova cookies; cada página e POST revalida usuário/papel. As rotas de dados passam a ser `/gestao/[codigo]/[exercicio]` e `/apresentacao/[codigo]/[exercicio]`, com exercício no formato `AAAA00`; rotas legadas redirecionam.
+
+Verificações locais, sem escrita no banco:
+
+```powershell
+npm test
+npm run typecheck
+npm run build
+```
+
+`npm run import:catalog`, `sync:*` e `monitor:*` **escrevem no banco configurado**; só executar após backup, migrations e autorização do checkpoint de produção. O bloco "Supabase APITCE" abaixo se refere ao projeto **antigo isolado** e é mantido como histórico, não como contagem atual do banco compartilhado.
+
 Sistema para sincronizar dados publicos do SIM/TCE-CE para uma base Supabase/Postgres e gerar dashboards e relatorios gerenciais municipais.
 
 ## Objetivo inicial

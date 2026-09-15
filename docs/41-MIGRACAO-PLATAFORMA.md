@@ -1,5 +1,15 @@
 # Migração do APITCE para a plataforma
 
+## Correção de segurança — 2026-09-15
+
+A estrutura compartilhada foi criada, mas **RLS habilitado não equivale a acesso seguro**: as 25 tabelas TCE possuem 50 policies com destino `PUBLIC`, e `anon`/`authenticated` tinham grants de leitura amplos. `tce` ainda não está exposto na Data API. A view `tce.municipios` usa `security_invoker=true` sobre `plataforma.catalogo_municipios` e falha por falta de privilégio, inclusive no teste do cliente administrativo. Não resolver com grant direto ao schema privado `plataforma`.
+
+O novo contrato local é: RPCs TCE com verificação de `auth.uid()`, vínculo ativo ao sistema e assinatura municipal TCE ativa; SELECT autenticado apenas para dados normalizados autorizados; RAW/operações internos; escrita fiscal somente via ETL `service_role`. O app usa cliente SSR autenticado para leituras e cliente admin apenas depois da autorização superadmin nas operações. SQL local em `supabase/migrations/20260915160000_*`–`20260915160200_*`; detalhes em `docs/42-ARQUITETURA-SEGURANCA-APITCE.md`.
+
+Essas migrations novas **não foram aplicadas remotamente**. As onze migrations TCE aplicadas pelo Claude foram versionadas com os timestamps remotos; as dezesseis `001`–`017` do banco isolado foram arquivadas. A seção "O que falta" abaixo é histórica: não expor `tce` nem executar carga antes de backup, hardening, teste com JWT real e autorização. `src/middleware.ts` foi substituído por `src/proxy.ts` conforme Next.js 16.
+
+Achados exclusivos de `portalgov`/`plataforma` permanecem sob responsabilidade do projeto da plataforma; este repositório não corrige aqueles schemas.
+
 Iniciada em 2026-09-14. O APITCE deixa de ser um projeto Supabase isolado e passa a ser o segundo sistema da plataforma, ao lado do PortalGov.
 
 ## Por quê

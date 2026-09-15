@@ -1,5 +1,15 @@
 # Roadmap APITCE
 
+## Atualização de 2026-09-15
+
+Este roadmap continua como mapa geral, mas a trilha de segurança/multi-município agora tem plano extra executável em `docs/superpowers/plans/2026-09-15-apitce-produto-seguro.md` e contrato em `docs/42-ARQUITETURA-SEGURANCA-APITCE.md`. O redesign de 2026-09-13/14 permanece concluído e histórico.
+
+Estado corrigido: no **projeto Supabase antigo**, havia tabelas `public` sem RLS e views com risco. No **Supabase compartilhado**, já existem 25 tabelas `tce` com RLS e 4 views invoker, mas grants amplos/policies `TO PUBLIC` e falta de cliente autenticado impedem tratar isso como segurança concluída. `tce` ainda não foi exposto na Data API. O código SSR, guardas e SQL de endurecimento estão preparados **localmente**, não validados como usuários reais nem aplicados em produção.
+
+Ordem atual: (1) testes e commit local; (2) backup e teste isolado das migrations; (3) autorização e aplicação controlada; (4) matriz real de auth/RLS; (5) exposição de `tce` sem `plataforma`; (6) vínculos, catálogo e carga Aracati; (7) navegador/banco/rollback. Fases de ETL, filtros, manutenção e produto abaixo seguem pendentes após essa trilha.
+
+O conteúdo abaixo foi escrito antes da migração e deve ser lido como diagnóstico histórico; referências a `middleware.ts`, tabelas `public` sem RLS no banco antigo e apresentação pública não representam a implementação atual.
+
 Criado em 2026-09-14, a partir de auditoria do código e do banco. Consolida e substitui o que estava espalhado em `checklist-projeto.md`, `checklist-melhorias.md` e `proximos-passos.md` — esses três continuam valendo como registro histórico, mas a ordem de trabalho é esta.
 
 ## Onde o projeto está

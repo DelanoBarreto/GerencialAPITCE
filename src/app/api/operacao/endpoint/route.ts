@@ -1,4 +1,6 @@
 import { createSupabaseAdminClient } from "../../../../lib/supabase/admin.js";
+import { authorizeInternalOperation } from "../../../../lib/auth/operation.js";
+import { acquireOperationLock } from "../../../../lib/ops/operation-lock.js";
 import { runNpmScript, type NpmScriptResult } from "../../../../lib/ops/run-npm-script.js";
 import { runSyncTce, runSyncContasBancarias } from "../../../../lib/tce/sync-runner.js";
 
@@ -20,25 +22,33 @@ type CatalogRow = {
 };
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as EndpointOperationBody;
-  const action = String(body.action ?? "");
-  const codigoMunicipio = String(body.codigoMunicipio ?? "");
-  const ano = Number(body.ano);
-  const endpoint = String(body.endpoint ?? "");
+  const authorization = await authorizeInternalOperation(request);
+  if (!authorization.ok) return authorization.response;
 
-  if (!allowedActions.has(action)) {
+  let body: EndpointOperationBody;
+  try {
+    body = (await request.json()) as EndpointOperationBody;
+  } catch {
+    return Response.json({ ok: false, error: "JSON invalido." }, { status: 400 });
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return Response.json({ ok: false, error: "Parametros invalidos." }, { status: 400 });
+  }
+  const { action, codigoMunicipio, ano, endpoint } = body;
+
+  if (typeof action !== "string" || !allowedActions.has(action)) {
     return Response.json({ ok: false, error: "Acao invalida." }, { status: 400 });
   }
 
-  if (!/^\d{3}$/.test(codigoMunicipio)) {
+  if (typeof codigoMunicipio !== "string" || !/^\d{3}$/.test(codigoMunicipio)) {
     return Response.json({ ok: false, error: "Municipio invalido." }, { status: 400 });
   }
 
-  if (!Number.isInteger(ano) || ano < 2000 || ano > 2099) {
+  if (typeof ano !== "number" || !Number.isInteger(ano) || ano < 2000 || ano > 2099) {
     return Response.json({ ok: false, error: "Ano invalido." }, { status: 400 });
   }
 
-  if (!/^[a-z0-9_]+$/.test(endpoint)) {
+  if (typeof endpoint !== "string" || !/^[a-z0-9_]+$/.test(endpoint)) {
     return Response.json({ ok: false, error: "Endpoint invalido." }, { status: 400 });
   }
 
@@ -64,14 +74,32 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: "Endpoint nao monitorado para este municipio/ano." }, { status: 404 });
   }
 
-  const result = await runEndpointOperation(action as "check" | "sync", codigoMunicipio, exercicio, ano, catalog as CatalogRow);
-
-  return Response.json({
-    ok: result.exitCode === 0,
-    command: result.command,
-    exitCode: result.exitCode,
-    output: result.output
+  const release = await acquireOperationLock({
+    key: `endpoint:${codigoMunicipio}:${exercicio}:${endpoint}`,
+    userId: authorization.user.id,
+    action,
+    codigoMunicipio,
+    exercicio,
+    target: endpoint
   });
+  if (!release) {
+    return Response.json({ ok: false, error: "Esta operacao ja esta em andamento." }, { status: 409 });
+  }
+
+  try {
+    const result = await runEndpointOperation(action as "check" | "sync", codigoMunicipio, exercicio, ano, catalog as CatalogRow);
+    const ok = result.exitCode === 0;
+    await release(ok ? "ok" : "erro", ok ? undefined : "execucao nao concluida");
+
+    return Response.json({
+      ok,
+      exitCode: result.exitCode,
+      output: ok ? "Operacao concluida. Consulte a auditoria." : "Operacao nao concluida. Consulte a auditoria."
+    });
+  } catch (error) {
+    await release("erro", error instanceof Error ? error.message : "erro desconhecido");
+    return Response.json({ ok: false, error: "Falha interna ao executar a operacao." }, { status: 500 });
+  }
 }
 
 async function runEndpointOperation(

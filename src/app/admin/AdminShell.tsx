@@ -10,7 +10,7 @@ import {
 import type { ReactNode } from "react";
 import { DashboardShell, type ShellNavItem } from "../../components/shell/DashboardShell.js";
 import type { AdminSyncLog } from "./admin-data.js";
-import { relativeTime } from "./admin-data.js";
+import { relativeTime } from "./format-utils.js";
 
 type AdminShellProps = {
   active: "dashboard" | "municipios" | "clientes" | "dados" | "logs";

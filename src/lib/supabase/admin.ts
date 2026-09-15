@@ -1,3 +1,5 @@
+import "server-only";
+
 import { createClient } from "@supabase/supabase-js";
 import { hasSupabaseServerConfig, requiredEnv, requiredSupabaseServerKey } from "../tce/env.js";
 

@@ -1,5 +1,5 @@
-import { unstable_cache } from "next/cache";
-import { createSupabaseAdminClient } from "../supabase/admin.js";
+import { cache } from "react";
+import { createSupabaseServerClient } from "../supabase/server.js";
 
 export type Municipio = {
   codigo_municipio: string;
@@ -19,28 +19,20 @@ export type Monitorado = {
  * Lista todos os municípios disponíveis.
  * Cacheado por 5 minutos — muda raramente.
  */
-export const loadMunicipios = unstable_cache(
-  async (): Promise<Municipio[]> => {
-    const supabase = createSupabaseAdminClient();
-    const { data, error } = await supabase
-      .from("municipios")
-      .select("codigo_municipio,nome_municipio")
-      .order("nome_municipio", { ascending: true });
+export const loadMunicipios = cache(async (): Promise<Municipio[]> => {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.rpc("listar_municipios");
 
     if (error) throw error;
     return (data ?? []) as Municipio[];
-  },
-  ["municipios-disponiveis"],
-  { revalidate: 300 }
-);
+  });
 
 /**
  * Lista municípios/anos ativos para monitoramento.
  * Cacheado por 60 segundos — pode mudar durante o uso.
  */
-export const loadMonitorados = unstable_cache(
-  async (): Promise<Monitorado[]> => {
-    const supabase = createSupabaseAdminClient();
+export const loadMonitorados = cache(async (): Promise<Monitorado[]> => {
+    const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from("tce_municipio_exercicios_monitorados")
       .select("codigo_municipio,ano,exercicio_orcamento,ativo,sincronizacao_automatica")
@@ -58,18 +50,15 @@ export const loadMonitorados = unstable_cache(
       ...row,
       nome_municipio: nameByCode.get(row.codigo_municipio) ?? row.codigo_municipio
     }));
-  },
-  ["monitorados-ativos"],
-  { revalidate: 60 }
-);
+  });
 
 /**
  * Carrega os grupos oficiais disponíveis.
  * Cacheado por 10 minutos — estrutura estática.
  */
-export const loadGrupos = unstable_cache(
+export const loadGrupos = cache(
   async (slugs: string[] = ["auxiliares", "bas", "orc", "bal"]) => {
-    const supabase = createSupabaseAdminClient();
+    const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from("tce_endpoint_groups")
       .select("slug,nome,ordem")
@@ -79,6 +68,4 @@ export const loadGrupos = unstable_cache(
     if (error) throw error;
     return (data ?? []) as Array<{ slug: string; nome: string; ordem: number }>;
   },
-  ["grupos-tce"],
-  { revalidate: 600 }
 );

@@ -7,7 +7,7 @@ export function PilotSourceBand({
   source,
   periodo
 }: {
-  source: "sim" | "demonstracao";
+  source: "sim" | "sem_dados";
   periodo: PeriodoInfo;
 }) {
   const real = source === "sim";
@@ -15,7 +15,7 @@ export function PilotSourceBand({
   return (
     <div className={`pilot-source-band ${real ? "is-real" : "is-demo"}`}>
       {real ? <ShieldCheck size={16} /> : <Database size={16} />}
-      <span>{real ? "Dados oficiais SIM/TCE-CE" : "Dados de demonstração local"}</span>
+      <span>{real ? "Dados oficiais SIM/TCE-CE" : "Nenhum dado oficial disponível neste recorte"}</span>
       <strong className="pilot-period-range">
         {formatPeriodoInfo(periodo)}
         <small>{periodo.total} competência(s)</small>
@@ -85,4 +85,3 @@ export function PilotNotice({ type, children }: { type: "ok" | "attention"; chil
     </div>
   );
 }
-

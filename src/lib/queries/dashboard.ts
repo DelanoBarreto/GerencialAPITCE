@@ -1,5 +1,4 @@
-import { unstable_cache } from "next/cache";
-import { createSupabaseAdminClient } from "../supabase/admin.js";
+import { createSupabaseServerClient } from "../supabase/server.js";
 
 export type ImportResumo = {
   slug: string;
@@ -22,22 +21,15 @@ export type ExecucaoMensal = {
  * Cacheado por 60 segundos — muda a cada sync.
  */
 export function loadImportResumo(codigoMunicipio: string, exercicio: string) {
-  return unstable_cache(
-    async (): Promise<ImportResumo[]> => {
-      const supabase = createSupabaseAdminClient();
+  return (async (): Promise<ImportResumo[]> => {
+      const supabase = await createSupabaseServerClient();
       const { data, error } = await supabase.rpc("get_import_summary", {
         p_municipio: codigoMunicipio,
         p_exercicio: exercicio
       });
 
       if (error) {
-        console.warn("RPC get_import_summary falhou, usando mock local para preview", error);
-        return [
-          { slug: "auxiliares", nome: "Auxiliares", registros: 120, tabelas: 3, detalhe: "municipios, funcoes e tipos" },
-          { slug: "bas", nome: "BAS", registros: 45, tabelas: 5, detalhe: "orgaos, unidades e contas" },
-          { slug: "orc", nome: "ORC", registros: 8900, tabelas: 6, detalhe: "orcamento, programas e projetos" },
-          { slug: "bal", nome: "BAL", registros: 45000, tabelas: 4, detalhe: "balancetes normalizados" }
-        ];
+        throw new Error(`RPC get_import_summary falhou: ${error.code}`);
       }
 
       return ((data ?? []) as ImportResumo[]).map((row) => ({
@@ -47,10 +39,7 @@ export function loadImportResumo(codigoMunicipio: string, exercicio: string) {
         tabelas: Number(row.tabelas),
         detalhe: row.detalhe
       }));
-    },
-    [`import-resumo-${codigoMunicipio}-${exercicio}`],
-    { revalidate: 60 }
-  )();
+    })();
 }
 
 /**
@@ -58,9 +47,8 @@ export function loadImportResumo(codigoMunicipio: string, exercicio: string) {
  * Cacheado por 60 segundos.
  */
 export function loadExecucaoMensal(codigoMunicipio: string, exercicio: string) {
-  return unstable_cache(
-    async (): Promise<ExecucaoMensal[]> => {
-      const supabase = createSupabaseAdminClient();
+  return (async (): Promise<ExecucaoMensal[]> => {
+      const supabase = await createSupabaseServerClient();
       const { data, error } = await supabase
         .from("vw_tce_execucao_orcamentaria_mensal")
         .select(
@@ -101,10 +89,7 @@ export function loadExecucaoMensal(codigoMunicipio: string, exercicio: string) {
       return [...byMonth.values()].sort((a, b) =>
         a.data_referencia_doc.localeCompare(b.data_referencia_doc)
       );
-    },
-    [`execucao-mensal-${codigoMunicipio}-${exercicio}`],
-    { revalidate: 60 }
-  )();
+    })();
 }
 
 function toNum(v: unknown): number {

@@ -1,6 +1,18 @@
 # Onde parei — APITCE
 
-Atualizado em 2026-09-14. **Leia primeiro a seção "Migração para a plataforma" no final deste arquivo — é onde a sessão mais recente parou e o que fazer a seguir.**
+## Checkpoint atual — 2026-09-15
+
+Branch de implementação: `codex/apitce-produto-seguro`. O código local prepara login/logout Supabase SSR, `src/proxy.ts`, guardas de página e POST, cliente autenticado para leituras, rotas `/gestao/[codigo]/[exercicio]` e `/apresentacao/[codigo]/[exercicio]`, migrations TCE de ponte/RLS/auditoria, lock e documentação. A área autenticada não mostra mais meses fictícios quando a consulta não retorna dados. **Nenhuma das três migrations novas foi aplicada ao banco remoto; não houve carga, exposição de `tce` na Data API nem deploy nesta implementação.** O SQL das onze migrations TCE anteriores foi extraído do histórico Claude; as dezesseis migrations antigas do projeto isolado foram movidas para legado.
+
+Verificação local de 2026-09-15: `npm test` (8 testes), `npm run test:browser:anon` (desktop 1440 px e mobile 390 px; seis rotas protegidas e três POSTs retornando 401), `npm run typecheck`, `npm run build`, `git diff --check` e `node scripts/extract-tce-migrations.mjs ... --verify` passaram. `npm audit --omit=dev` confirmou zero vulnerabilidades nas dependências de produção. Consulta somente leitura no Supabase compartilhado confirmou colunas, índices e status da ponte: organização `014` e catálogo `014` existem, mas ainda há **zero assinaturas e zero usuários TCE**. Os testes de RLS com JWT real e a execução do SQL novo em base isolada **não foram realizados**.
+
+O passo anterior “expor `tce` primeiro” abaixo ficou **obsoleto e inseguro**: antes da exposição, revisar e testar as migrations locais `20260915160000`–`20260915160200` sob anon/usuários reais. O remoto ainda possui policies `TO PUBLIC`, grants amplos e a view `tce.municipios` sobre `plataforma` que falha por permissão. A tela/RPC PortalGov de usuários é fixa a `portalgov`; vínculos TCE usam conta Auth existente, bootstrap interno controlado e RPC TCE restrita ao superadmin.
+
+Próxima ação exata: conferir o commit e o push da branch isolada; depois preparar backup/ACLs/policies/contagens TCE e testar as três migrations em base isolada compatível. **Antes de qualquer alteração remota**, obter autorização para a aplicação em produção e só depois considerar exposição da Data API. Checklist e critérios em `docs/superpowers/plans/2026-09-15-apitce-produto-seguro.md`; contrato em `docs/42-ARQUITETURA-SEGURANCA-APITCE.md`.
+
+As seções seguintes são o registro histórico de 2026-09-13/14, não instruções atuais de execução.
+
+Atualizado em 2026-09-14. A seção "Migração para a plataforma" no final deste arquivo registra o estado histórico daquela sessão.
 
 ## Estado atual
 

@@ -1,16 +1,33 @@
 import { ChartNoAxesCombined, FileText, House, Landmark } from "lucide-react";
+import { redirect } from "next/navigation.js";
 import { DashboardShell, type ShellNavItem } from "../../components/shell/DashboardShell.js";
 import { ExecutiveTrend } from "../../components/pilot/ExecutiveTrend.js";
 import { PilotMetric, PilotNotice, PilotSection, PilotSourceBand } from "../../components/pilot/PilotUi.js";
 import { formatCompetencia, formatCurrency, formatPeriodoInfo } from "../../lib/formatters.js";
-import { loadAracatiPilot } from "../../lib/queries/pilot.js";
+import { canAccessMunicipio, requireTcePage } from "../../lib/auth/access.js";
+import { loadPilot } from "../../lib/queries/pilot.js";
 
 export const dynamic = "force-dynamic";
 
 export default async function GestaoPage() {
-  const snapshot = await loadAracatiPilot();
+  const access = await requireTcePage("/gestao");
+  const municipio = access.municipios[0];
+  if (!municipio) redirect("/acesso-negado");
+  const exercicio = process.env.TCE_DEFAULT_EXERCICIO?.trim() || "202500";
+  redirect(`/gestao/${municipio.codigo_municipio}/${exercicio}`);
+}
+
+export async function GestaoView({ codigo, exercicio }: Readonly<{ codigo: string; exercicio: string }>) {
+  const route = `/gestao/${codigo}/${exercicio}`;
+  const access = await requireTcePage(route);
+  if (!/^\d{3}$/.test(codigo) || !/^\d{4}00$/.test(exercicio) || !canAccessMunicipio(access, codigo)) {
+    redirect("/acesso-negado");
+  }
+
+  const municipio = access.municipios.find((item) => item.codigo_municipio === codigo);
+  const snapshot = await loadPilot(codigo, exercicio, municipio?.nome_municipio ?? `Municipio ${codigo}`);
   const last = snapshot.meses.at(-1);
-  const current = last ?? { competencia: "202501", receita: 0, empenhado: 0, liquidado: 0, pago: 0 };
+  const current = last ?? { competencia: `${exercicio.slice(0, 4)}01`, receita: 0, empenhado: 0, liquidado: 0, pago: 0 };
 
   const acumulado = snapshot.meses.reduce(
     (acc, item) => ({
@@ -31,8 +48,8 @@ export default async function GestaoPage() {
   const hasAttention = acumulado.pago > acumulado.receita;
 
   const nav: ShellNavItem[] = [
-    { href: "/gestao", label: "Visão geral", icon: <House size={17} />, active: true },
-    { href: "/apresentacao/aracati", label: "Apresentação", icon: <FileText size={17} /> }
+    { href: route, label: "Visão geral", icon: <House size={17} />, active: true },
+    { href: `/apresentacao/${codigo}/${exercicio}`, label: "Apresentação", icon: <FileText size={17} /> }
   ];
 
   return (
@@ -132,7 +149,7 @@ export default async function GestaoPage() {
         eyebrow="Detalhamento"
         title="Execução mês a mês"
         action={
-          <a className="admin-link-button" href="/apresentacao/aracati">
+          <a className="admin-link-button" href={`/apresentacao/${codigo}/${exercicio}`}>
             <ChartNoAxesCombined size={15} /> Ver apresentação
           </a>
         }

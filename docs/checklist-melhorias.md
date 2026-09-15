@@ -1,5 +1,7 @@
 # Checklist de melhorias do projeto APITCE
 
+> Registro histórico. Ordem e status atuais: `docs/40-ROADMAP.md` e `docs/39-ONDE-PAREI.md`.
+
 Este checklist registra o diagnostico tecnico atual e a ordem recomendada para reduzir lentidao, diminuir arquivos grandes e melhorar a operacao do ETL TCE-CE.
 
 ## Diagnostico rapido

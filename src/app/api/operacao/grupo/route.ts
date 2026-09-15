@@ -1,4 +1,6 @@
 import { createSupabaseAdminClient } from "../../../../lib/supabase/admin.js";
+import { authorizeInternalOperation } from "../../../../lib/auth/operation.js";
+import { acquireOperationLock } from "../../../../lib/ops/operation-lock.js";
 import { runNpmScript } from "../../../../lib/ops/run-npm-script.js";
 import { runSyncGrupo } from "../../../../lib/tce/sync-runner.js";
 
@@ -16,26 +18,35 @@ type OperationBody = {
 };
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as OperationBody;
-  const action = String(body.action ?? "");
-  const codigoMunicipio = String(body.codigoMunicipio ?? "");
-  const ano = Number(body.ano);
-  const grupo = String(body.grupo ?? "");
-  const force = Boolean(body.force);
+  const authorization = await authorizeInternalOperation(request);
+  if (!authorization.ok) return authorization.response;
 
-  if (!allowedActions.has(action)) {
+  let body: OperationBody;
+  try {
+    body = (await request.json()) as OperationBody;
+  } catch {
+    return Response.json({ ok: false, error: "JSON invalido." }, { status: 400 });
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)
+    || (body.force !== undefined && typeof body.force !== "boolean")) {
+    return Response.json({ ok: false, error: "Parametros invalidos." }, { status: 400 });
+  }
+  const { action, codigoMunicipio, ano, grupo } = body;
+  const force = body.force ?? false;
+
+  if (typeof action !== "string" || !allowedActions.has(action)) {
     return Response.json({ ok: false, error: "Acao invalida." }, { status: 400 });
   }
 
-  if (!/^\d{3}$/.test(codigoMunicipio)) {
+  if (typeof codigoMunicipio !== "string" || !/^\d{3}$/.test(codigoMunicipio)) {
     return Response.json({ ok: false, error: "Municipio invalido." }, { status: 400 });
   }
 
-  if (!Number.isInteger(ano) || ano < 2000 || ano > 2099) {
+  if (typeof ano !== "number" || !Number.isInteger(ano) || ano < 2000 || ano > 2099) {
     return Response.json({ ok: false, error: "Ano invalido." }, { status: 400 });
   }
 
-  if (!/^[a-z0-9_]+$/.test(grupo)) {
+  if (typeof grupo !== "string" || !/^[a-z0-9_]+$/.test(grupo)) {
     return Response.json({ ok: false, error: "Grupo invalido." }, { status: 400 });
   }
 
@@ -47,8 +58,20 @@ export async function POST(request: Request) {
   }
 
   const exercicio = `${ano}00`;
+  const release = await acquireOperationLock({
+    key: `grupo:${codigoMunicipio}:${exercicio}:${grupo}`,
+    userId: authorization.user.id,
+    action,
+    codigoMunicipio,
+    exercicio,
+    target: grupo
+  });
+  if (!release) {
+    return Response.json({ ok: false, error: "Esta operacao ja esta em andamento." }, { status: 409 });
+  }
 
-  if (action === "sync") {
+  try {
+    if (action === "sync") {
     const output: string[] = [];
     const onLog = (msg: string) => output.push(msg);
 
@@ -63,19 +86,20 @@ export async function POST(request: Request) {
         force: force
       }, onLog);
 
+      await release("ok");
       return Response.json({
         ok: true,
-        command: `runSyncGrupo(grupo=${grupo})`,
         exitCode: 0,
-        output: output.join("\n")
+        output: "Operacao concluida. Consulte a auditoria."
       });
     } catch (err: any) {
+      const detail = err instanceof Error ? err.message : "erro desconhecido";
+      await release("erro", detail);
       return Response.json({
         ok: false,
-        command: `runSyncGrupo(grupo=${grupo})`,
         exitCode: 1,
-        output: output.join("\n") + "\nError: " + err.message
-      });
+        output: "Operacao nao concluida. Consulte a auditoria."
+      }, { status: 500 });
     }
   }
 
@@ -96,10 +120,14 @@ export async function POST(request: Request) {
 
   const result = await runNpmScript(script, args);
 
+  await release(result.exitCode === 0 ? "ok" : "erro", result.exitCode === 0 ? undefined : "execucao nao concluida");
   return Response.json({
     ok: result.exitCode === 0,
-    command: `npm run ${script} -- ${args.join(" ")}`,
     exitCode: result.exitCode,
-    output: result.output
+    output: result.exitCode === 0 ? "Operacao concluida. Consulte a auditoria." : "Operacao nao concluida. Consulte a auditoria."
   });
+  } catch (error) {
+    await release("erro", error instanceof Error ? error.message : "erro desconhecido");
+    return Response.json({ ok: false, error: "Falha interna ao executar a operacao." }, { status: 500 });
+  }
 }

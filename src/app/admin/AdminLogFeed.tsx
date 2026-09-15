@@ -3,7 +3,7 @@
 import { Clock3, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { AdminSyncLog } from "./admin-data.js";
-import { formatInt, relativeTime } from "./admin-data.js";
+import { formatInt, relativeTime } from "./format-utils.js";
 
 type AdminLogFeedProps = {
   logs: AdminSyncLog[];

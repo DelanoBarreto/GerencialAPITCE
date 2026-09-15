@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "typecheck": "tsc --noEmit",
-    "test": "tsx scripts/test-periodo.ts",
+    "test": "tsx scripts/test-periodo.ts && tsx --test src/lib/auth/*.test.ts",
+    "test:browser:anon": "tsx scripts/test-protected-routes.ts",
     "sync:tce": "tsx scripts/sync-tce.ts",
     "sync:tce:dry": "tsx scripts/sync-tce.ts --dry-run",
     "check:updates": "tsx scripts/check-updates.ts",
@@ -21,13 +22,15 @@
     "sync:contas-bancarias": "tsx scripts/sync-contas-bancarias.ts"
   },
   "dependencies": {
+    "@supabase/ssr": "0.12.4",
     "@supabase/supabase-js": "^2.116.0",
     "dotenv": "^17.4.2",
     "lucide-react": "^1.45.0",
     "next": "^16.3.5",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "recharts": "^3.10.1"
+    "recharts": "^3.10.1",
+    "server-only": "0.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
