@@ -110,21 +110,11 @@ async function upsertRows(
     return;
   }
 
+  // O catalogo de municipios do Ceara e mantido em plataforma.catalogo_municipios,
+  // compartilhado pelos sistemas da plataforma. O endpoint do TCE nao o reescreve:
+  // a lista e estavel e a fonte de verdade e a plataforma.
   if (table === "municipios") {
-    const payload = rows.map((row) => ({
-      codigo_municipio: asText(row.codigo_municipio),
-      nome_municipio: asText(row.nome_municipio ?? row.descricao_municipio ?? row.nome),
-      payload: row,
-      updated_at: new Date().toISOString()
-    }));
-
-    const { error } = await supabase.from("municipios").upsert(payload, {
-      onConflict: "codigo_municipio"
-    });
-
-    if (error) {
-      throw error;
-    }
+    return;
   }
 
   if (table === "tce_balancetes_receitas_orcamentarias") {

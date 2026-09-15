@@ -1,12 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+// O cliente do projeto usa o schema `tce`, entao o schema fica aberto no tipo.
+type AnySchemaClient = SupabaseClient<any, any, any, any, any>;
+
 export type GroupEndpoint = {
   endpoint: string;
   frequencia_sugerida: string;
 };
 
 export async function loadGroupEndpoints(
-  supabase: SupabaseClient,
+  supabase: AnySchemaClient,
   groupSlug: string,
   onlyDefault = false
 ): Promise<GroupEndpoint[]> {
@@ -30,7 +33,7 @@ export async function loadGroupEndpoints(
 }
 
 export async function ensureGroupSubscriptions(
-  supabase: SupabaseClient,
+  supabase: AnySchemaClient,
   codigoMunicipio: string,
   exercicioOrcamento: string,
   endpoints: GroupEndpoint[]

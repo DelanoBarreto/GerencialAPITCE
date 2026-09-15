@@ -26,39 +26,20 @@ export async function POST(request: Request) {
   const exercicio = `${ano}00`;
   const now = new Date().toISOString();
 
+  // O catalogo da plataforma ja traz os 184 municipios do Ceara, entao basta
+  // validar que o codigo existe — nao e mais preciso buscar no TCE.
   const { data: municipio, error: municipioError } = await supabase
     .from("municipios")
     .select("codigo_municipio")
     .eq("codigo_municipio", codigoMunicipio)
-    .single();
+    .maybeSingle();
 
-  if (municipioError || !municipio) {
-    let foundMunicipio = false;
-    try {
-      const tce = new TceClient();
-      for await (const page of tce.paginate("municipios", { codigo_municipio: codigoMunicipio })) {
-        if (page.rows.length > 0) {
-          const row = page.rows[0];
-          const { error: upsertError } = await supabase.from("municipios").upsert({
-            codigo_municipio: String(row.codigo_municipio),
-            nome_municipio: String(row.nome_municipio ?? row.descricao_municipio ?? row.nome),
-            payload: row,
-            updated_at: now
-          }, { onConflict: "codigo_municipio" });
-          
-          if (!upsertError) {
-            foundMunicipio = true;
-          }
-          break;
-        }
-      }
-    } catch (err: any) {
-      return Response.json({ ok: false, message: "Erro ao buscar municipio no TCE: " + err.message }, { status: 500 });
-    }
+  if (municipioError) {
+    return Response.json({ ok: false, message: "Erro ao consultar o catalogo de municipios." }, { status: 500 });
+  }
 
-    if (!foundMunicipio) {
-      return Response.json({ ok: false, message: "Municipio nao encontrado localmente nem no TCE." }, { status: 404 });
-    }
+  if (!municipio) {
+    return Response.json({ ok: false, message: "Municipio nao encontrado no catalogo." }, { status: 404 });
   }
 
   const { error: monitorError } = await supabase.from("tce_municipios_monitorados").upsert(
