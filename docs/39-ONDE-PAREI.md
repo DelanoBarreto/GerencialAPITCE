@@ -1,6 +1,6 @@
 # Onde parei — APITCE
 
-Atualizado em 2026-09-13.
+Atualizado em 2026-09-14. **Leia primeiro a seção "Migração para a plataforma" no final deste arquivo — é onde a sessão mais recente parou e o que fazer a seguir.**
 
 ## Estado atual
 
@@ -72,6 +72,44 @@ Achado que muda a prioridade: **as rotas de API não têm autenticação** (`/ap
 5. **`sync-runner.ts` tem ~1.130 linhas** e continua monolítico — a quebra em mappers por tabela é pendência antiga de `docs/checklist-melhorias.md`, prioridade alta lá.
 6. **Dados comerciais de `/admin/clientes` são mock** — a tela já avisa, mas em algum momento precisa de origem real.
 7. **Sem autenticação/RLS** — pré-requisito registrado abaixo, continua valendo: não publicar a área gerencial para clientes antes disso.
+
+## Migração para a plataforma (2026-09-14, sessão 4) — LEIA ISTO PRIMEIRO
+
+O usuário revelou que está construindo uma plataforma multi-sistema (PortalGov + Jurídico + APITCE) usando **schemas** no mesmo banco Supabase, em vez de um projeto por sistema — estratégia para reduzir custo. Decisão tomada e **já em execução**: migrar o APITCE do projeto isolado (`rjqyqbkwavuhwepekohr`) para o banco do PortalGov (`omcbfuiyaeakbsqbzgqk`, projeto `PortalGov-Producao`), como schema `tce`.
+
+Detalhes completos da decisão e do porquê em **`docs/41-MIGRACAO-PLATAFORMA.md`** — leia esse arquivo antes de continuar, ele tem o raciocínio inteiro. Resumo do que já foi feito:
+
+1. **Schema `tce` criado** no banco do PortalGov, registrado em `plataforma.sistemas` com 4 papéis (`superadmin`, `tenant_admin`, `editor`, `viewer`).
+2. **25 tabelas migradas** (estrutura, não dados ainda) com todas as chaves naturais preservadas. A tabela `municipios` do APITCE (1 registro) foi descartada — vira uma **view** `tce.municipios` sobre `plataforma.catalogo_municipios`, que já tem os 184 municípios do Ceará. Importante: ter 184 no catálogo não significa carregar dados de todos — dados do TCE só são baixados para quem estiver em `tce_municipios_monitorados` (clientes/prospects/amostras).
+3. **3 views recriadas com `security_invoker = true`** (corrige o erro `SECURITY DEFINER` que existia no banco antigo).
+4. **RLS aplicado nas 25 tabelas**, reusando as funções que o PortalGov já tinha (`plataforma.tem_acesso('tce')` etc.). Criada `tce.municipios_permitidos()` como ponte entre `codigo_municipio` (modelo do TCE) e `organizacao_id` (modelo da plataforma) — teve que ser corrigida uma vez porque a função `org_atual()` original dependia de um header específico do PortalGov (`x-portalgov-tenant-slug`) que o APITCE não envia.
+5. **Linter de segurança do Supabase confirmou zero ERROR no schema `tce`** (antes eram 26 tabelas sem RLS + 3 views SECURITY DEFINER = 29 erros).
+6. **Código apontado para o banco novo**: `.env` atualizado, `src/lib/supabase/admin.ts` usa `db: { schema: "tce" }`, `sync-runner.ts` não reescreve mais o catálogo de municípios, rota de monitoramento simplificada (só valida código no catálogo, não busca mais no TCE). Tudo commitado e no GitHub.
+
+### Bloqueio exato onde parou
+
+O schema `tce` tem os *grants* de banco (`USAGE`/`SELECT`/`ALL`) mas **ainda não foi adicionado à lista de "Exposed schemas" nas configurações do projeto Supabase** — isso só se faz pelo painel web, não por SQL/MCP. Testei com um script e confirma: `ERRO: Invalid schema: tce`.
+
+**Próxima ação, antes de qualquer outra coisa:**
+1. Abrir `https://supabase.com/dashboard/project/omcbfuiyaeakbsqbzgqk/settings/api`
+2. Em **"Exposed schemas"**, acrescentar `tce` à lista (deve ter `public, portalgov` hoje)
+3. Salvar
+4. Confirmar rodando: `npx tsx` num script temporário que chama `createSupabaseAdminClient().from("tce_endpoint_groups").select("slug")` — se retornar sem erro `Invalid schema`, está liberado.
+
+### Depois disso, na ordem
+
+1. `npm run import:catalog` — reconstrói o catálogo de 105 endpoints a partir do OpenAPI do TCE (a estrutura já existe, só falta popular).
+2. `npm run sync:ano` (ou equivalente) — recarrega Aracati/2025 direto da API do TCE para o banco novo. Decisão tomada: recarregar da fonte em vez de copiar do banco antigo, porque valida o ETL inteiro na estrutura nova.
+3. Rodar `npm test`, `npm run typecheck`, `npm run build` e subir o `/admin`, `/gestao`, `/apresentacao/aracati` para confirmar que tudo funciona lendo do banco novo (checar `is-real` na faixa de período, não `is-demo`).
+4. **Autenticação na aplicação** (ainda não feita): criar `src/middleware.ts` protegendo `/admin/*` e `/api/*`. O banco já está protegido por RLS, mas as rotas HTTP ainda não verificam sessão — usuário escolheu "login próprio, mesma base de usuários" (mesmo Supabase Auth e tabela `usuarios_sistema`, filtrando por `sistema='tce'`). Precisa instalar `@supabase/ssr` (ainda não instalado).
+5. Depois: `loadAracatiPilot()` continua hardcoded para `"014"`/`"202500"`/`"Aracati"` — vira parâmetro, é o que destrava o segundo cliente.
+6. **Não desativar o projeto Supabase antigo** (`rjqyqbkwavuhwepekohr`) até a carga nova estar validada. Credenciais antigas ficaram comentadas no fim do `.env` para rollback.
+7. **Rotacionar a secret key do PortalGov** quando a migração estiver validada — ela apareceu em texto nesta conversa.
+
+### O que NÃO fazer
+
+- Não integrar com o PortalGov ainda (publicar contratos, etc.) — usuário pediu explicitamente para adiar isso e focar no desenvolvimento do APITCE primeiro. Fica registrado em `41-MIGRACAO-PLATAFORMA.md` para quando for a hora.
+- Achado fora do escopo, mas relevante: `plataforma` (9 tabelas do PortalGov) está sem RLS, e `papeis_extras_usuario` tem RLS ligado com zero políticas (nega tudo). Não é deste projeto, mas vale avisar o usuário.
 
 ## Cuidados
 
