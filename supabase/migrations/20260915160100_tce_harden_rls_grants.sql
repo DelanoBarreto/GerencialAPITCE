@@ -61,6 +61,10 @@ begin
 end
 $block$;
 
+-- A antiga RPC privilegiada no schema exposto era usada somente pelas policies
+-- removidas acima; a nova ponte vive em tce_internal.
+drop function tce.municipios_permitidos();
+
 -- Referencias globais exigem vinculo ativo ao sistema, mas nao a um municipio.
 do $block$
 declare table_name text;
@@ -99,7 +103,7 @@ begin
     'tce_unidades_orcamentarias'
   ] loop
     execute format(
-      'create policy %I on tce.%I for select to authenticated using ((select tce.tem_acesso_municipio(codigo_municipio)))',
+      'create policy %I on tce.%I for select to authenticated using (codigo_municipio in (select m.codigo_municipio from tce.listar_municipios() m))',
       table_name || '_leitura_municipio', table_name
     );
   end loop;
@@ -125,3 +129,14 @@ $block$;
 
 -- A view de compatibilidade municipios nao deve abrir leitura direta na plataforma.
 revoke all on tce.municipios from anon, authenticated;
+
+-- Advisors de performance do projeto compartilhado apontam quatro FKs TCE
+-- sem indice de apoio. Estes indices pertencem somente ao schema tce.
+create index if not exists tce_endpoint_catalog_grupo_slug_idx
+  on tce.tce_endpoint_catalog (grupo_slug);
+create index if not exists tce_sync_availability_checks_codigo_municipio_idx
+  on tce.tce_sync_availability_checks (codigo_municipio);
+create index if not exists tce_sync_availability_checks_endpoint_idx
+  on tce.tce_sync_availability_checks (endpoint);
+create index if not exists tce_sync_subscriptions_endpoint_idx
+  on tce.tce_sync_subscriptions (endpoint);

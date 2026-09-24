@@ -10,6 +10,7 @@ Verificações locais, sem escrita no banco:
 
 ```powershell
 npm test
+npm run test:db:local
 npm run typecheck
 npm run build
 ```

@@ -4,13 +4,13 @@
 
 **Goal:** Entregar APITCE autenticado, multi-municipio e auditavel no Supabase compartilhado, com isolamento por RLS e validacao real em producao.
 
-**Architecture:** `plataforma` continua privada, `portalgov` intocado e `tce` e o unico schema deste repositorio. Leituras usam JWT e cliente SSR; `service_role` atua somente nas operacoes internas apos autorizacao. A primeira liberacao e direta em producao, mas avancos remotos exigem backup e checkpoints explicitos.
+**Architecture:** `plataforma` continua privada e `portalgov` intocado. `tce` e o schema de Data API; `tce_internal` pertence ao APITCE, guarda a ponte privilegiada e nunca e exposto. Leituras usam JWT e cliente SSR; `service_role` atua somente nas operacoes internas apos autorizacao. A primeira liberacao e direta em producao, mas avancos remotos exigem backup e checkpoints explicitos.
 
 **Tech Stack:** Next.js 16.3.5 App Router, TypeScript estrito/NodeNext, `@supabase/ssr` 0.12.4, Supabase Auth/Postgres RLS, Node.js ETL, Playwright.
 
 ## Global Constraints
 
-- Nunca expor `plataforma` na Data API, nem alterar objetos `portalgov` neste projeto.
+- Nunca expor `plataforma` ou `tce_internal` na Data API, nem alterar objetos `portalgov` neste projeto.
 - Nunca enviar senha, JWT, chave secreta ou stdout bruto ao navegador, documentos ou Git.
 - Preservar o Supabase antigo `rjqyqbkwavuhwepekohr` ate aceite de paridade e rollback.
 - Nao aplicar migration, executar carga, fazer deploy ou rotacionar chave sem autorizacao explicita para esse checkpoint.
@@ -46,14 +46,16 @@
 
 ## Tarefa 3 — Contrato SQL/RLS TCE
 
-**Arquivos:** `supabase/migrations/20260915160000_tce_auth_bridge.sql`, `20260915160100_tce_harden_rls_grants.sql`, `20260915160200_tce_operacoes_auditoria.sql`, `docs/42-ARQUITETURA-SEGURANCA-APITCE.md`.
+**Arquivos:** `supabase/migrations/20260915160000_tce_auth_bridge.sql`, `20260915160100_tce_harden_rls_grants.sql`, `20260915160200_tce_operacoes_auditoria.sql`, `supabase/tests/fixture-shared-local.sql`, `scripts/test-tce-migrations-local.mjs`, `docs/42-ARQUITETURA-SEGURANCA-APITCE.md`.
 
 **Interfaces:** `meu_papel() -> text`, `listar_municipios() -> (codigo_municipio, nome_municipio)`, `tem_acesso_municipio(text) -> boolean`, `sou_superadmin() -> boolean`, `vincular_usuario_existente(uuid,text,text,text) -> uuid`.
 
 **Entrega:** `anon` sem acesso; authenticated so com SELECT/RPC minimos; `service_role` ETL; todas as 25 tabelas TCE com RLS e policies especificas, sem `TO PUBLIC` ou escrita municipal.
 
-- [x] Preparar SQL local sem mudar `plataforma` ou `portalgov` e sem expor `tce.municipios` diretamente.
+- [x] Preparar SQL local sem mudar `plataforma` ou `portalgov`; wrappers invoker em `tce`, funcoes definer em `tce_internal`, sem expor `tce.municipios` diretamente.
 - [x] Revisar definições de tabelas, status de assinatura/organizacao, indice de `codigo_municipio` e ACLs contra o remoto via consultas somente leitura; `014` existe, ainda sem assinatura/usuario TCE.
+- [x] Aplicar as 14 migrations em PostgreSQL PGlite local e testar sintaxe, grants, RPCs, policies e view `security_invoker` com usuarios simulados. `npm run test:db:local` passou; **nao equivale a sessoes/JWTs reais no Supabase**.
+- [x] Conferir advisors remotos somente leitura: quatro FKs `tce` sem indice receberam indices apenas no SQL local; avisos de seguranca atuais sao de `portalgov`, `plataforma` ou Auth compartilhado e nao atestam seguranca de `tce` enquanto nao exposto.
 - [ ] Capturar backup logico/definicoes/contagens do `tce`; registrar local seguro do backup e operador no checkpoint, sem guardar credenciais no repositorio.
 - [ ] Em base isolada compativel, aplicar as tres migrations na ordem timestamp e executar teste negativo (`anon`, usuario sem TCE, assinatura suspensa) e positivo (viewer `014`, superadmin) usando JWTs reais de teste.
 - [ ] Executar advisors de seguranca; revisar especificamente RPCs `SECURITY DEFINER`, grants a `PUBLIC`, views invoker e policy de cada tabela.
@@ -92,7 +94,7 @@
 - [ ] Identificar dominio, responsavel e janela; registrar backup, versao do deploy anterior e lista atual de exposed schemas.
 - [ ] Preparar usuario interno TCE superadmin via operacao privilegiada unica, conferindo UUID antes do INSERT; criar assinatura TCE ativa para Aracati e vincular conta existente via RPC restrita.
 - [ ] Testar matriz anon/sem TCE/viewer/outro municipio/superadmin **antes** de expor `tce` na Data API.
-- [ ] Expor somente `tce` no painel e confirmar que `plataforma` permanece fora; publicar app com origin, URL e chave publicavel no build/runtime e segredo apenas no runtime servidor.
+- [ ] Expor somente `tce` no painel e confirmar que `plataforma` e `tce_internal` permanecem fora; publicar app com origin, URL e chave publicavel no build/runtime e segredo apenas no runtime servidor.
 - [ ] Executar `npm run import:catalog` com autorizacao; comparar 105 endpoints esperados com contagem real.
 - [ ] Configurar monitoramento `014`/`202500` e executar grupos/meses em lotes; confrontar registros normalizados/views com a origem.
 - [ ] Validar login, logout, cookie, redirect, E2E desktop/mobile, fonte `is-real`, status HTTP, logs e valores no dominio real.

@@ -9,6 +9,7 @@ Atualizado em 2026-09-15. Este documento descreve o contrato **preparado no codi
 | `plataforma` | Camada multi-sistema | Nunca expor | Somente dentro das RPCs TCE privilegiadas e auditadas |
 | `portalgov` | PortalGov Municipal | Configuracao propria | Nenhuma alteracao neste projeto |
 | `tce` | Gerencial APITCE | Expor apenas apos grants/RLS testados | Cliente autenticado para leitura; `service_role` para ETL interno |
+| `tce_internal` | Gerencial APITCE | Nunca expor | Funcoes privilegiadas da ponte, sem acesso direto a tabelas `plataforma` |
 
 O projeto compartilhado e `PortalGov-Producao` (`omcbfuiyaeakbsqbzgqk`). O projeto APITCE antigo (`rjqyqbkwavuhwepekohr`) e contingencia temporaria. Migrations de `public` do projeto antigo foram arquivadas em `supabase/legacy-apitce-isolated/` e nunca devem ser reaplicadas no compartilhado.
 
@@ -22,7 +23,7 @@ O projeto compartilhado e `PortalGov-Producao` (`omcbfuiyaeakbsqbzgqk`). O proje
 6. A URL escolhe o municipio, mas `tce.tem_acesso_municipio()` e RLS confirmam o vinculo. A validacao de pagina e uma segunda barreira, nao substitui o banco.
 7. `service_role` ignora RLS. Por isso ele fica em modulo `server-only`, exclusivamente nas rotas de ETL/monitoramento apos `getUser()` + `tce.sou_superadmin()`; nunca em consultas comuns.
 
-As RPCs de ponte sao `SECURITY DEFINER` apenas porque `plataforma` e privada. Todas usam `search_path = ''`, nomes qualificados, `auth.uid()` no corpo e `EXECUTE` restrito; mesmo assim, precisam de teste como usuarios reais antes da exposicao do schema. A view legada `tce.municipios` continua no historico, mas o aplicativo usa `listar_municipios()` e o grant direto da view e revogado.
+As RPCs expostas em `tce` sao wrappers `SECURITY INVOKER`. A leitura privilegiada de `plataforma` fica em funcoes `SECURITY DEFINER` do schema **nao exposto** `tce_internal`; elas usam `search_path = ''`, nomes qualificados, `auth.uid()` e verificam que a conta nao foi excluida. `authenticated` so recebe `USAGE`/`EXECUTE` das funcoes necessarias em `tce_internal`, sem grants diretos nas tabelas `plataforma`. A antiga RPC privilegiada `tce.municipios_permitidos()` e removida depois que suas policies historicas sao substituidas. A view legada `tce.municipios` fica sem grant direto e o aplicativo usa `listar_municipios()`. As duas camadas ainda precisam de teste com sessoes reais antes da exposicao.
 
 ## Papel e dados
 
@@ -34,6 +35,8 @@ As RPCs de ponte sao `SECURITY DEFINER` apenas porque `plataforma` e privada. To
 | `superadmin` interno | Todos | Sim | Sim | Sim, via RPC restrita |
 
 `anon` nao deve ter `USAGE`, `SELECT` ou `EXECUTE` em `tce`. `authenticated` recebe apenas SELECT das tabelas normalizadas, views `security_invoker` e tabelas de referencia necessarias. Tabelas brutas e verificacoes internas nao recebem SELECT; logs e escopos operacionais sao visiveis somente ao superadmin por RLS. Nenhum usuario autenticado recebe grants de escrita fiscal. O ETL usa apenas `service_role` no servidor.
+
+As policies de tabelas municipais usam a lista de codigos autorizados da RPC, avaliada por consulta, em vez de consultar `plataforma` para cada linha. Quatro indices de FKs `tce` apontados pelos advisors de performance foram adicionados ao SQL local; nenhuma alteracao de indice foi feita no remoto.
 
 Contas PortalGov existentes sao reutilizadas por `auth_user_id`. A tela/RPC PortalGov existente fixa `sistema='portalgov'`, portanto **nao cadastra vinculo TCE**. Para o piloto, um operador privilegiado cria uma vez o vinculo `superadmin` TCE apos conferir UUID e backup; depois `tce.vincular_usuario_existente(...)` permite ao superadmin vincular contas ja existentes a municipios com assinatura TCE ativa. Nao ha duplicacao de senha, nem tela completa de gestao TCE nesta entrega.
 
@@ -54,6 +57,6 @@ Se um checkpoint falhar: nao avancar; retirar `tce` da Data API, voltar o deploy
 - `anon` negado; usuario sem TCE negado; viewer de Aracati le somente `014`; usuario de outro municipio nao le `014`.
 - Usuario com assinatura suspensa deixa de receber municipio, inclusive alterando URL ou consultando REST diretamente.
 - `tenant_admin` recebe `403` nos POSTs; superadmin recebe resposta controlada e auditoria; duas chamadas iguais recebem `409`.
-- View financeira respeita RLS nas tabelas de origem; `plataforma` nao aparece na Data API.
+- View financeira respeita RLS nas tabelas de origem; `plataforma` e `tce_internal` nao aparecem na Data API.
 - Valores da tela conferem com views/tabelas no banco; fonte `is-real` aparece apenas com dados oficiais.
 - Build, tipos, testes e navegador real passam; rollback e backup ficam registrados em `docs/39-ONDE-PAREI.md`.
