@@ -1,6 +1,8 @@
 # APITCE
 
-> Estado em 2026-09-15: desenvolvimento de autenticação/RLS multi-município preparado na branch `codex/apitce-produto-seguro`, **ainda não aplicado nem validado em produção**. Leia `docs/39-ONDE-PAREI.md` antes de executar comandos que escrevem no banco.
+> Estado em 2026-09-25: desenvolvimento de autenticação/RLS multi-município preparado na branch `codex/apitce-produto-seguro`, **ainda não aplicado nem validado em produção**. Retomando o trabalho? Rode a skill/comando `/onde-parei` primeiro — ela lê o checkpoint, o plano consolidado e a visão de produto nesta ordem e resume o que fazer agora. Nunca execute comandos que escrevem no banco sem ler `docs/39-ONDE-PAREI.md` antes.
+>
+> A visão de produto vai além do MVP técnico atual: indicadores legais em tempo real (LRF, RCL, saúde, educação, FUNDEB), uma camada gerencial complementar para cobrir o atraso do TCE, RBAC multi-perfil (prefeito, secretários, câmara, contadores, folha, patrimônio, jurídico) e um módulo add-on opcional de automação/canais (Cloudflare, WhatsApp, agente conversacional). Nada disso está implementado ainda — ver `docs/43-VISAO-PRODUTO-E-MERCADO.md` e a ordem de execução em `docs/44-PLANO-DESENVOLVIMENTO-CONSOLIDADO.md`.
 
 O banco oficial escolhido é o Supabase compartilhado `PortalGov-Producao`, schema `tce`. `plataforma` é a camada privada de identidade/vínculos e `portalgov` pertence a outro sistema; nenhum comando deste repositório deve alterar objetos `portalgov`. As migrations do banco APITCE antigo ficam em `supabase/legacy-apitce-isolated/` somente para histórico. Consulte `supabase/README.md`, `docs/42-ARQUITETURA-SEGURANCA-APITCE.md` e o plano adicional `docs/superpowers/plans/2026-09-15-apitce-produto-seguro.md`.
 
