@@ -8,6 +8,18 @@ Atualizado em 2026-09-24. Este documento registra a visão de produto ampliada d
 
 Dar a gestores municipais (prefeitos, secretários), corpo técnico (contadores, controladores, escritórios de contabilidade) e outros perfis (presidente de câmara, folha de pagamento, patrimônio, jurídico) uma visão consolidada e calculada das finanças do município — incluindo os limites legais que podem gerar punição do TCE — sem depender de pedir relatórios complexos à contabilidade ou a escritórios de assessoria.
 
+## Padrão de design exigido (definido em 2026-09-24)
+
+O usuário não é programador nem designer e definiu a qualidade visual das telas como objetivo central do projeto, não detalhe secundário. As telas precisam ter nível de produto SaaS moderno — dashboards bonitos, funcionais, elegantes, com gráficos, textos explicativos e análise de BI completa — não telas de sistema genérico. Ao entrar em qualquer fase de desenho de tela/mockup, a abordagem deve ser a de um Product Designer/UI-UX Designer Sênior: perguntar objetivo, público-alvo e dados principais de cada tela específica antes de propor layout, mesmo já tendo o contexto geral do produto. Cada tela pode atender um perfil diferente (prefeito, contador, câmara etc. — ver seção de RBAC abaixo), o que muda o que deve aparecer em destaque.
+
+**Multi-dispositivo é requisito, não bônus (confirmado em 2026-09-25):** o produto precisa atender bem desktop, tablet e celular — não só mobile-first, como o `docs/20-SISTEMA-VISUAL.md` atual prioriza para a experiência de Gestão. Qualquer perfil (prefeito, contador, secretário) pode acessar de qualquer dispositivo, então cada tela nova precisa de um plano de responsividade real (breakpoints, o que se reorganiza, o que se esconde), não um layout desktop que só encolhe.
+
+**Exploração de direção visual (iniciada em 2026-09-24, pausada a pedido do usuário para focar em documentação/plano primeiro):** um primeiro mockup do Dashboard Executivo foi desenhado como Artifact, definindo uma direção que deve ser reaproveitada quando a fase de telas reabrir:
+- Paleta: fundo marfim quente `#F7F5F0`, texto principal `#0B1B2E`, dourado `#9C7A2E` como selo de autenticidade do dado oficial TCE (distinto dos tokens de status já existentes em `design-tokens.css`)
+- Tipografia: Fraunces (display, números grandes) + Inter (corpo e dados tabulares)
+- Elemento de assinatura: limites legais da LRF desenhados como arcos/gauges radiais (não cards de status simples) — mostra visualmente a distância até o limite, não só o número
+- Essa direção ainda não foi validada com o usuário nem levada a mobile/tablet — é ponto de partida, não decisão fechada
+
 ## Por que isso é diferente de "só mostrar os dados do TCE"
 
 O SIM/TCE-CE é a fonte oficial, mas **atrasada por natureza**: em 24/09/2026 a receita oficial só estava disponível até 31/07. Um sistema que só espelha o TCE mostra o passado, não ajuda a decidir o presente. Um prefeito que precisa saber, antes de fechar a folha do mês, se vai estourar o limite de despesa com pessoal da LRF não pode esperar dois meses pelo dado oficial — a decisão relevante acontece **antes** do envio ao TCE, não depois.

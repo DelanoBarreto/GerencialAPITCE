@@ -1,8 +1,10 @@
 # Onde parei — APITCE
 
-## Visão de produto ampliada — 2026-09-24
+## Visão de produto ampliada — 2026-09-24/25
 
-O usuário definiu uma visão de produto e mercado mais ampla que o PRD original (`docs/projetoAPITCE.md`), registrada em **`docs/43-VISAO-PRODUTO-E-MERCADO.md`**: indicadores legais em tempo real (LRF, RCL, saúde, educação, VAAT/VAAF), uma camada gerencial complementar para cobrir o atraso de 1-2 meses do TCE, RBAC multi-perfil (prefeito, secretários, câmara, contadores, folha, patrimônio, jurídico), e um módulo add-on opcional de automação/canais (Cloudflare, polling automático, WhatsApp, agente conversacional via n8n). Nenhum desses itens está implementado; a prioridade de execução continua sendo o checkpoint abaixo (Fase 1 de segurança).
+O usuário definiu uma visão de produto e mercado mais ampla que o PRD original (`docs/projetoAPITCE.md`), registrada em **`docs/43-VISAO-PRODUTO-E-MERCADO.md`**: indicadores legais em tempo real (LRF, RCL, saúde, educação, VAAT/VAAF), uma camada gerencial complementar para cobrir o atraso de 1-2 meses do TCE, RBAC multi-perfil (prefeito, secretários, câmara, contadores, folha, patrimônio, jurídico), padrão de design SaaS moderno com requisito multi-dispositivo (desktop/tablet/mobile), e um módulo add-on opcional de automação/canais (Cloudflare, polling automático, WhatsApp, agente conversacional via n8n). Nenhum desses itens está implementado; a prioridade de execução continua sendo o checkpoint abaixo (Fase 1 de segurança).
+
+Todas as fases (a de segurança em execução, o roadmap técnico e a visão de produto) foram amarradas em ordem única em **`docs/44-PLANO-DESENVOLVIMENTO-CONSOLIDADO.md`** — consultar esse documento para saber "o que vem depois" sem reconciliar os outros três manualmente.
 
 ## Checkpoint atual — 2026-09-15
 
