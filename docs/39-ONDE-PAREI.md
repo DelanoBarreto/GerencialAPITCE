@@ -1,5 +1,9 @@
 # Onde parei — APITCE
 
+## Visão de produto ampliada — 2026-09-24
+
+O usuário definiu uma visão de produto e mercado mais ampla que o PRD original (`docs/projetoAPITCE.md`), registrada em **`docs/43-VISAO-PRODUTO-E-MERCADO.md`**: indicadores legais em tempo real (LRF, RCL, saúde, educação, VAAT/VAAF), uma camada gerencial complementar para cobrir o atraso de 1-2 meses do TCE, RBAC multi-perfil (prefeito, secretários, câmara, contadores, folha, patrimônio, jurídico), e um módulo add-on opcional de automação/canais (Cloudflare, polling automático, WhatsApp, agente conversacional via n8n). Nenhum desses itens está implementado; a prioridade de execução continua sendo o checkpoint abaixo (Fase 1 de segurança).
+
 ## Checkpoint atual — 2026-09-15
 
 Branch publicada: `codex/apitce-produto-seguro`, último commit remoto `e0b6297` (GitHub `origin/codex/apitce-produto-seguro`). O código prepara login/logout Supabase SSR, `src/proxy.ts`, guardas de página e POST, cliente autenticado para leituras, rotas `/gestao/[codigo]/[exercicio]` e `/apresentacao/[codigo]/[exercicio]`, migrations TCE de ponte/RLS/auditoria, lock e documentação. A área autenticada não mostra mais meses fictícios quando a consulta não retorna dados. **Nenhuma das três migrations novas foi aplicada ao banco remoto; não houve carga, exposição de `tce` na Data API nem deploy nesta implementação.** O SQL das onze migrations TCE anteriores foi extraído do histórico Claude; as dezesseis migrations antigas do projeto isolado foram movidas para legado.

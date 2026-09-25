@@ -52,6 +52,7 @@ Isso evita lentidao, duplicidade, dependencia de disponibilidade da API externa 
 - Filtros e estrategia de sync: [docs/api-filtros-sync.md](docs/api-filtros-sync.md)
 - Catalogo oficial de endpoints: [docs/catalogo-endpoints-tce-sim.md](docs/catalogo-endpoints-tce-sim.md)
 - Monitoramento de municipios: [docs/monitoramento-municipios.md](docs/monitoramento-municipios.md)
+- Visão de produto e mercado (indicadores legais, camada gerencial, módulo de automação/canais): [docs/43-VISAO-PRODUTO-E-MERCADO.md](docs/43-VISAO-PRODUTO-E-MERCADO.md)
 - Checklist do projeto: [docs/checklist-projeto.md](docs/checklist-projeto.md)
 - Visão do projeto e rotina: [docs/visao-projeto-e-rotina.md](docs/visao-projeto-e-rotina.md)
 - Controle de processo do admin: [docs/controle-processo-admin.md](docs/controle-processo-admin.md)
